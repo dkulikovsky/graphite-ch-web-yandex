@@ -128,6 +128,9 @@ def renderView(request):
       if useCache:
         cache.add(dataKey, data, cacheTimeout)
 
+    # Always sort our metrics by name
+    data.sort(cmp=lambda a,b: cmp(a.name, b.name))
+
     # If data is all we needed, we're done
     format = requestOptions.get('format')
     if format == 'csv':
