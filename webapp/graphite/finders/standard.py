@@ -4,6 +4,7 @@ import fnmatch
 from os.path import islink, isdir, isfile, realpath, join, dirname, basename
 from glob import glob
 from ceres import CeresTree, CeresNode
+from graphite.conductor import Conductor
 from graphite.node import BranchNode, LeafNode
 from graphite.readers import CeresReader, WhisperReader, GzippedWhisperReader, RRDReader
 from graphite.util import find_escaped_pattern_fields
@@ -32,6 +33,29 @@ def braces_glob(s):
 
   return list(res)
 
+def conductor_glob(pattern):
+  parts = pattern.split('/')
+  pos = 0
+  found = False
+  for part in parts:
+    if re_conductor.match(part):
+      found = True
+      break
+    pos += 1
+  if not found:
+    return braces_glob(pattern)
+  cexpr = parts[pos]
+  hosts = conductor.expandExpression(cexpr)
+
+  if not hosts:
+    return braces_glob(pattern)
+  hosts = [host.replace('.','_') for host in hosts]
+
+  braces_expr = '{' + ','.join(hosts) + '}'
+  parts[pos] = braces_expr
+
+  return braces_glob('/'.join(parts))
+
 
 class CeresFinder:
   def __init__(self, directory=None):
@@ -41,7 +65,7 @@ class CeresFinder:
 
   def find_nodes(self, query):
     log.info("running ceres finder %s" % query)
-    for fs_path in braces_glob( self.tree.getFilesystemPath(query.pattern) ):
+    for fs_path in conductor_glob( self.tree.getFilesystemPath(query.pattern) ):
       metric_path = self.tree.getNodePath(fs_path)
 
       if CeresNode.isNodeDir(fs_path):
