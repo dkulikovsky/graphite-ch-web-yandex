@@ -62,6 +62,8 @@ MIDDLEWARE_CLASSES = (
   'django_replicated.middleware.ReplicationMiddleware',
 )
 
+DATABASE_ROUTERS = ['django_replicated.ReplicationRouter'] 
+
 ROOT_URLCONF = 'graphite.urls'
 
 INSTALLED_APPS = (
