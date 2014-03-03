@@ -17,6 +17,8 @@ from graphite.util import find_escaped_pattern_fields
 from . import fs_to_metric, get_real_metric_path, match_entries
 
 re_braces = re.compile(r'({[^{},]*,[^{}]*})')
+re_conductor = re.compile(r'(^%[\w@-]+)$')
+conductor = Conductor()
 
 def braces_glob(s):
   match = re_braces.search(s)
