@@ -15,6 +15,9 @@ Depends: python-cairo,
  python-django-tagging, 
  python-mysqldb, 
  mysql-server, 
- python-flup
+ python-flup,
+ python-django-yauth, 
+ python-httplib2, 
+ python-memcached
 Description: graph system uses ceres
  New graph system uses ceres

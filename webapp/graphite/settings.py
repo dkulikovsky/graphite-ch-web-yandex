@@ -16,7 +16,7 @@ limitations under the License."""
 import sys, os
 from os.path import abspath, dirname, join
 from warnings import warn
-
+from django_yauth.settings import *
 
 GRAPHITE_WEB_APP_SETTINGS_LOADED = False
 WEBAPP_VERSION = '0.10.0-alpha'
@@ -94,6 +94,12 @@ LDAP_URI = None
 
 #Set this to True to delegate authentication to the web server
 USE_REMOTE_USER_AUTHENTICATION = False
+
+#Set this to True to delegate authentication to Yandex Passport
+USE_PASSPORT_USER_AUTHENTICATION = True
+YAUTH_TYPE = 'intranet'
+YAUSER_ADMIN_LOGIN = True
+CREATE_USER_ON_ACCESS = True
 
 # Django 1.5 requires this so we set a default but warn the user
 SECRET_KEY = 'UNSAFE_DEFAULT'
@@ -197,6 +203,9 @@ if USE_LDAP_AUTH and LDAP_URI is None:
 if USE_REMOTE_USER_AUTHENTICATION:
   MIDDLEWARE_CLASSES += ('django.contrib.auth.middleware.RemoteUserMiddleware',)
   AUTHENTICATION_BACKENDS.insert(0,'django.contrib.auth.backends.RemoteUserBackend')
+
+if USE_PASSPORT_USER_AUTHENTICATION:
+  MIDDLEWARE_CLASSES += ('django_yauth.middleware.YandexAuthMiddleware',)
 
 if USE_LDAP_AUTH:
   AUTHENTICATION_BACKENDS.insert(0,'graphite.account.ldapBackend.LDAPBackend')

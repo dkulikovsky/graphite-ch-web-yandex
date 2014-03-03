@@ -56,10 +56,17 @@ if hasattr(json, 'read') and not hasattr(json, 'loads'):
 
 def getProfile(request, allowDefault=True):
   if request.user.is_authenticated():
-    return Profile.objects.get_or_create(user=request.user)[0]
+    try:
+      return request.user.profile
+    except ObjectDoesNotExist:
+      profile = Profile(user=request.user)
+      try:
+        profile.save(using='default')
+      except IntegrityError: # prevent Duplicate key on insert during race condition while rendering two frames simultaneously
+        pass
+      return profile
   elif allowDefault:
     return default_profile()
-
 
 def getProfileByUsername(username):
   try:
