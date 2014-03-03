@@ -18,6 +18,7 @@ Depends: python-cairo,
  python-flup,
  python-django-yauth, 
  python-httplib2, 
- python-memcached
+ python-memcached,
+ python-django-replicated
 Description: graph system uses ceres
  New graph system uses ceres
