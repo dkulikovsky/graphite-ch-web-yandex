@@ -38,6 +38,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from graphite.account.models import Profile
 from graphite.logger import log
+from django.core.exceptions import ObjectDoesNotExist
 
 
 # There are a couple different json modules floating around out there with

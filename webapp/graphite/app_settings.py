@@ -57,7 +57,6 @@ MIDDLEWARE_CLASSES = (
   'django.middleware.common.CommonMiddleware',
   'django.middleware.gzip.GZipMiddleware',
   'django.contrib.sessions.middleware.SessionMiddleware',
-  'django.contrib.auth.middleware.AuthenticationMiddleware',
   'django.contrib.messages.middleware.MessageMiddleware',
   'django_replicated.middleware.ReplicationMiddleware',
 )
