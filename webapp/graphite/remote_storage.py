@@ -12,12 +12,15 @@ from graphite.logger import log
 from graphite.util import unpickle
 
 
-def upgrade_results(results):
+def upgrade_results(r):
+  result = []
   for node_info in results:
     if 'isLeaf' in node_info:
       node_info['is_leaf'] = node_info['isLeaf']
     if 'metric_path' in node_info:
       node_info['path'] = node_info['metric_path']
+    result.append(node_info)
+  return result
 
 class RemoteStore(object):
   lastFailure = 0.0
@@ -104,7 +107,7 @@ class FindRequest(object):
         assert response.status == 200, "received error response %s - %s" % (response.status, response.reason)
         result_data = response.read()
         results = unpickle.loads(result_data)
-        upgrade_results(results)
+        results = upgrade_results(results)
 
       except:
         log.exception("FindRequest.get_results(host=%s, query=%s) exception processing response" % (self.store.host, self.query))
@@ -183,7 +186,7 @@ class RemoteReader(object):
             raise Exception("Error response %d %s from %s" % (response.status, response.reason, url))
           pickled_response = response.read()
           results = unpickle.loads(pickled_response)
-          upgrade_results(results)
+          results = upgrade_results(results)
           self.cache_lock.acquire()
           self.request_cache[url] = results
           self.cache_lock.release()
