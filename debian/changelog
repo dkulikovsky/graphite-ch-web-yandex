@@ -1,3 +1,12 @@
+yabs-graphite-ceres (0.2.3.0) unstable; urgency=low
+
+  * merged viert patches
+  * conductor groups in metric path
+  * multidb django settings
+  * passport auth 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 07 Mar 2014 13:05:31 +0400
+
 yabs-graphite-ceres (0.2.2.6) unstable; urgency=low
 
   * another one rebuild 
