@@ -2509,6 +2509,7 @@ function editDashboard() {
     layout: 'vbox',
     layoutConfig: {align: 'stretch', pack: 'start'},
     modal: true,
+    onEsc: updateAfterEdit,
     items: [
       {
         xtype: 'container',
