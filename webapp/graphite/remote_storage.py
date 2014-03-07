@@ -14,7 +14,7 @@ from graphite.util import unpickle
 
 def upgrade_results(r):
   result = []
-  for node_info in results:
+  for node_info in r:
     if 'isLeaf' in node_info:
       node_info['is_leaf'] = node_info['isLeaf']
     if 'metric_path' in node_info:
