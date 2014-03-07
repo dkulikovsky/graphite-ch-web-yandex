@@ -2426,6 +2426,7 @@ var keyEventHandlers = (function() {
   return {
   toggle_toolbar: toggleToolbar,
   open_finder: showDashboardFinder,
+  open_dashboard_editor: editDashboard,
   time_range_1_hours: updateTimeRange_1hours_before, 
   time_range_6_hours: updateTimeRange_6hours_before, 
   time_range_1_day: updateTimeRange_1day_before, 

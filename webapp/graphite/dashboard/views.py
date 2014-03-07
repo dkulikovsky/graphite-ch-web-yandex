@@ -31,6 +31,7 @@ defaultUIConfig = {
 }
 defaultKeyboardShortcuts = {
   'open_finder' : 'alt-a',
+  'open_dashboard_editor' : 'ctrl-e',
   'time_range_1_hours': 'alt-shift-1',
   'time_range_6_hours': 'alt-shift-2',
   'time_range_1_day': 'alt-shift-3',
