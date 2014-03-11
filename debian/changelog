@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.5.0) unstable; urgency=low
+
+  * merged with vanilla 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 11 Mar 2014 14:05:55 +0400
+
 yabs-graphite-ceres (0.2.4.1) unstable; urgency=low
 
   * fixed timeShift evaluation with empty series lists 
