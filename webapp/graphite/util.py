@@ -39,7 +39,7 @@ from django.contrib.auth.models import User
 from graphite.account.models import Profile
 from graphite.logger import log
 from django.core.exceptions import ObjectDoesNotExist
-
+from django.db.utils import IntegrityError
 
 # There are a couple different json modules floating around out there with
 # different APIs. Hide the ugliness here.
