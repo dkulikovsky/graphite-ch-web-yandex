@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.4.0) unstable; urgency=low
+
+  * stabilized all new pathces 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 11 Mar 2014 12:24:42 +0400
+
 yabs-graphite-ceres (0.2.3.7) unstable; urgency=low
 
   * update dashboard on esc in dashboard editor 
