@@ -1,9 +1,10 @@
-yabs-graphite-ceres (0.2.4.2) unstable; urgency=low
+yabs-graphite-ceres (0.2.5.1) unstable; urgency=low
 
   * disabled passport auth by default
   * merged viert patch for percona deps 
+  * merged with vanilla 
 
- -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 25 Mar 2014 13:37:57 +0400
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 11 Mar 2014 14:05:55 +0400
 
 yabs-graphite-ceres (0.2.4.1) unstable; urgency=low
 
