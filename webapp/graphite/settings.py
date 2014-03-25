@@ -96,7 +96,7 @@ LDAP_URI = None
 USE_REMOTE_USER_AUTHENTICATION = False
 
 #Set this to True to delegate authentication to Yandex Passport
-USE_PASSPORT_USER_AUTHENTICATION = True
+USE_PASSPORT_USER_AUTHENTICATION = False
 YAUTH_TYPE = 'intranet'
 YAUSER_ADMIN_LOGIN = True
 CREATE_USER_ON_ACCESS = True
@@ -206,6 +206,8 @@ if USE_REMOTE_USER_AUTHENTICATION:
 
 if USE_PASSPORT_USER_AUTHENTICATION:
   MIDDLEWARE_CLASSES += ('django_yauth.middleware.YandexAuthMiddleware',)
+else:
+  MIDDLEWARE_CLASSES += ('django.contrib.auth.middleware.AuthenticationMiddleware',)
 
 if USE_LDAP_AUTH:
   AUTHENTICATION_BACKENDS.insert(0,'graphite.account.ldapBackend.LDAPBackend')
