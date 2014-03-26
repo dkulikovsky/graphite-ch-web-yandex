@@ -68,7 +68,13 @@ def header(request):
   context['profile'] = getProfile(request)
   context['documentation_url'] = settings.DOCUMENTATION_URL
   context['login_url'] = settings.LOGIN_URL
-  return render_to_response("browserHeader.html", context)
+
+  if hasattr(settings, 'USE_YANDEX_HEADER') and settings.USE_YANDEX_HEADER:
+    template = "yandexHeader.html"
+  else:
+    template = "browserHeader.html"
+
+  return render_to_response(template, context)
 
 
 def browser(request):
