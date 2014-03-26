@@ -71,9 +71,20 @@ def renderView(request):
   }
   data = requestContext['data']
 
+  # add template to graphOptions
+  try:
+    user_profile = getProfile(request, allowDefault=False)
+    graphOptions['defaultTemplate'] = user_profile.defaultTemplate
+  except:
+    graphOptions['defaultTemplate'] = "default" 
+
+  cache_request_obj = request.GET.copy()
+  # hack request object to add defaultTemplate param
+  cache_request_obj.appendlist("template", graphOptions['defaultTemplate'])
+
   # First we check the request cache
   if useCache:
-    requestKey = hashRequest(request)
+    requestKey = hashRequest(cache_request_obj)
     cachedResponse = cache.get(requestKey)
     if cachedResponse:
       log.cache('Request-Cache hit [%s]' % requestKey)
@@ -203,13 +214,6 @@ def renderView(request):
 
       log.rendering('Total pickle rendering time %.6f' % (time() - start))
       return response
-
-  # add template to graphOptions
-  try:
-    user_profile = getProfile(request, allowDefault=False)
-    graphOptions['defaultTemplate'] = user_profile.defaultTemplate
-  except:
-    graphOptions['defaultTemplate'] = "default" 
 
 
   # We've got the data, now to render it

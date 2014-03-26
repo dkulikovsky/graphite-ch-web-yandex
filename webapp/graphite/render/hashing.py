@@ -21,7 +21,7 @@ import bisect
 def hashRequest(request):
   # Normalize the request parameters so ensure we're deterministic
   queryParams = ["%s=%s" % (key, '&'.join(values))
-                 for (key,values) in request.GET.lists()
+                 for (key,values) in request.lists()
                  if not key.startswith('_')]
 
   normalizedParams = ','.join( sorted(queryParams) ) or 'noParam'
