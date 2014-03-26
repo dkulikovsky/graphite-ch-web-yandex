@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.5.4) unstable; urgency=low
+
+  * fixed issue with cached images with different templates 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Wed, 26 Mar 2014 21:01:54 +0400
+
 yabs-graphite-ceres (0.2.5.3) unstable; urgency=low
 
   * added alternative Yandex Header 
