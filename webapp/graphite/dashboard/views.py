@@ -2,6 +2,7 @@ import re
 import errno
 import sys
 
+from socket import getfqdn
 from os.path import getmtime, join, exists
 from urllib import urlencode
 from ConfigParser import ConfigParser
@@ -159,6 +160,7 @@ def dashboard(request, name=None):
     else:
       context['initialState'] = dashboard.state
 
+  context['server_debug'] = getfqdn()
   return render_to_response("dashboard.html", context)
 
 
