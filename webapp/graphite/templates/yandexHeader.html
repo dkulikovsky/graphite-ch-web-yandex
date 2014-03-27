@@ -25,6 +25,7 @@ limitations under the License. -->
       .header {
         background-color: #ccd8e7;
         height : 60px;
+        text-shadow : 1px 1px 3px white;
       }
 
       .header .logo {
@@ -49,21 +50,33 @@ limitations under the License. -->
         font-size : 120%;
       }
       .header .nav {
-        float : right;
+        float : left;
       }
       .header .nav ul {
-        padding : 19px 8px 0 0;
+        padding-top : 20px;
         margin : 0;
         list-style : none;
       }
       .header .nav ul li {
         display : inline;
-        padding : 0 4px;
-        font-size : 12px;
+        padding : 0 8px;
+        font-size : 14px;
+      }
+      .header .login {
+        float : right;
+        font-size : 14px;
+        padding : 20px 20px 0 0;
       }
 
-      .header a { color : #006; text-decoration : none; }
-      .header a:hover { color : #55a; text-decoration : underline; }
+      .header a { color : black; }
+      .header a:hover { color : #55a; }
+
+      .header .login a { text-decoration : underline; }
+      .header .login img { position : relative; top : 2px; }
+      .header .login .username { font-weight : bold; display : inline-block; } 
+      .header .login a .username { color : black; }
+      .username:first-letter { color : red; }
+
    </style>
   </head>
   <body>
@@ -73,18 +86,20 @@ limitations under the License. -->
       <div class="title">Graphite</div>
       <div class="nav">
         <ul>
-        {% if user.is_authenticated %}
-          <li>Logged in as <b>{{ user.username }}</b>, <a href="/account/logout/" target="_top">logout</a> (<a href="/account/edit/" target="_top">edit profile</a>)</li>
-        {% else %}
-          <li><a href="{{login_url}}" target="_top">Login</a></li>
-        {% endif %}
+          <li><a href="/dashboard/" target="_top">Dashboard</a></li>
         {% if documentation_url %}
           <li><a href="{{documentation_url}}" target="_newWindow">Documentation</a></li>
         {% endif %}
-          <li><a href="/dashboard/" target="_top">Dashboard</a></li>
           <li><a href="/graphlot/" target="_top">Graphlot</a></li>
           <li><a href="/events/" target="_top">Events</a></li>
         </ul>
+      </div>
+      <div class="login">
+        {% if user.is_authenticated %}
+        <img src="/content/js/ext/resources/icons/fam/user.png"> <a href="http://staff.yandex-team.ru/{{ user.username }}"><span class="username"> {{ user.username }} </span></a>
+        {% else %}
+          <a href="https://passport.yandex.ru/passport?mode=passport&retpath=http://gr.yandex-team.ru" target="_top">Login</a>
+        {% endif %}
       </div>
     </div>
   </body>
