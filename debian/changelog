@@ -1,3 +1,35 @@
+yabs-graphite-ceres (0.2.5.5) unstable; urgency=low
+
+  * added server debug to catch slow graphite servers 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 27 Mar 2014 13:12:23 +0400
+
+yabs-graphite-ceres (0.2.5.4) unstable; urgency=low
+
+  * fixed issue with cached images with different templates 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Wed, 26 Mar 2014 21:01:54 +0400
+
+yabs-graphite-ceres (0.2.5.3) unstable; urgency=low
+
+  * added alternative Yandex Header 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Wed, 26 Mar 2014 14:56:44 +0400
+
+yabs-graphite-ceres (0.2.5.2) unstable; urgency=low
+
+  * fixed first start bug 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 25 Mar 2014 14:14:32 +0400
+
+yabs-graphite-ceres (0.2.5.1) unstable; urgency=low
+
+  * disabled passport auth by default
+  * merged viert patch for percona deps 
+  * merged with vanilla 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 11 Mar 2014 14:05:55 +0400
+
 yabs-graphite-ceres (0.2.4.1) unstable; urgency=low
 
   * fixed timeShift evaluation with empty series lists 

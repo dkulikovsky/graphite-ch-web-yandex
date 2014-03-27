@@ -51,6 +51,7 @@ REMOTE_FIND_TIMEOUT = 3.0
 REMOTE_FETCH_TIMEOUT = 6.0
 REMOTE_RETRY_DELAY = 60.0
 REMOTE_READER_CACHE_SIZE_LIMIT = 1000
+CARBON_METRIC_PREFIX='carbon'
 CARBONLINK_HOSTS = ["127.0.0.1:7002"]
 CARBONLINK_TIMEOUT = 1.0
 CARBONLINK_HASHING_KEYFUNC = None
@@ -96,7 +97,7 @@ LDAP_URI = None
 USE_REMOTE_USER_AUTHENTICATION = False
 
 #Set this to True to delegate authentication to Yandex Passport
-USE_PASSPORT_USER_AUTHENTICATION = True
+USE_PASSPORT_USER_AUTHENTICATION = False
 YAUTH_TYPE = 'intranet'
 YAUSER_ADMIN_LOGIN = True
 CREATE_USER_ON_ACCESS = True
@@ -194,7 +195,11 @@ if 'sqlite3' in DATABASES.get('default',{}).get('ENGINE','') \
 
 # Caching shortcuts
 if MEMCACHE_HOSTS:
-  CACHE_BACKEND = 'memcached://' + ';'.join(MEMCACHE_HOSTS) + ('/?timeout=%d' % DEFAULT_CACHE_DURATION)
+    CACHES['default'] = {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': MEMCACHE_HOSTS,
+        'TIMEOUT': DEFAULT_CACHE_DURATION,
+    }
 
 # Authentication shortcuts
 if USE_LDAP_AUTH and LDAP_URI is None:
@@ -206,6 +211,8 @@ if USE_REMOTE_USER_AUTHENTICATION:
 
 if USE_PASSPORT_USER_AUTHENTICATION:
   MIDDLEWARE_CLASSES += ('django_yauth.middleware.YandexAuthMiddleware',)
+else:
+  MIDDLEWARE_CLASSES += ('django.contrib.auth.middleware.AuthenticationMiddleware',)
 
 if USE_LDAP_AUTH:
   AUTHENTICATION_BACKENDS.insert(0,'graphite.account.ldapBackend.LDAPBackend')
