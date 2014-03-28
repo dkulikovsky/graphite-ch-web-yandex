@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.6.0) unstable; urgency=low
+
+  * merged with vanilla 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 28 Mar 2014 15:36:37 +0400
+
 yabs-graphite-ceres (0.2.5.5) unstable; urgency=low
 
   * added server debug to catch slow graphite servers 
