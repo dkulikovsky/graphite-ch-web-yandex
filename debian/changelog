@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.6.1) unstable; urgency=low
+
+  * sort by name by default 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 04 Apr 2014 19:27:50 +0400
+
 yabs-graphite-ceres (0.2.6.0) unstable; urgency=low
 
   * merged with vanilla 
