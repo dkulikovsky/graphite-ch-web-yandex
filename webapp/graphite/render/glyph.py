@@ -889,6 +889,9 @@ class LineGraph(Graph):
           if consecutiveNones == 0:
             self.ctx.line_to(x, y)
             if 'stacked' in series.options: #Close off and fill area before unknown interval
+              if self.params.get('areaOutline', None):
+                outlines.append(self.ctx.copy_path())
+
               if self.secondYAxis:
                 if 'secondYAxis' in series.options:
                   self.fillAreaAndClip(x, y, startX, self.getYCoord(0, "right"))
