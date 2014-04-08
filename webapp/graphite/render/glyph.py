@@ -982,7 +982,7 @@ class LineGraph(Graph):
     if outlines:
       self.ctx.restore()
       self.ctx.set_line_width(1)
-      self.ctx.set_source_rgb(0, 0, 0)
+      self.setColor( self.params.get('areaOutline') )
       for path in outlines:
         self.ctx.append_path(path)
         self.ctx.stroke()
