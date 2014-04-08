@@ -527,7 +527,7 @@ class LineGraph(Graph):
                   'yStepRight', 'rightWidth', 'rightColor', 'rightDashed', \
                   'leftWidth', 'leftColor', 'leftDashed', 'xFormat', 'minorY', \
                   'hideYAxis', 'uniqueLegend', 'vtitleRight', 'yDivisors', \
-                  'connectedLimit')
+                  'connectedLimit', 'areaOutline')
   validLineModes = ('staircase','slope','connected')
   validAreaModes = ('none','first','all','stacked')
   validPieModes = ('maximum', 'minimum', 'average')
@@ -842,6 +842,8 @@ class LineGraph(Graph):
     self.ctx.save()
     clipRestored = False
 
+    outlines = []
+
     for series in self.data:
 
       if 'stacked' not in series.options:
@@ -950,6 +952,9 @@ class LineGraph(Graph):
           consecutiveNones = 0
 
       if 'stacked' in series.options:
+        if self.params.get('areaOutline', None):
+          outlines.append(self.ctx.copy_path())
+
         if self.lineMode == 'staircase':
           xPos = x 
         else:
@@ -974,6 +979,15 @@ class LineGraph(Graph):
         else:
           self.ctx.set_dash([],0)
 
+    if outlines:
+      self.ctx.restore()
+      self.ctx.set_line_width(1)
+      self.ctx.set_source_rgb(0, 0, 0)
+      for path in outlines:
+        self.ctx.append_path(path)
+        self.ctx.stroke()
+
+
   def fillAreaAndClip(self, x, y, startX=None, areaYFrom=None):
     startX = (startX or self.area['xmin'])
     areaYFrom = (areaYFrom or self.area['ymax'])
@@ -984,7 +998,7 @@ class LineGraph(Graph):
     self.ctx.line_to(startX, areaYFrom)             # bottom startX
     self.ctx.close_path()
     self.ctx.fill()
-
+    
     # clip above y axis
     self.ctx.append_path(pattern)
     self.ctx.line_to(x, areaYFrom)                  # yZero endX
