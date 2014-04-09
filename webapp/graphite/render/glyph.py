@@ -983,8 +983,11 @@ class LineGraph(Graph):
           self.ctx.set_dash([],0)
 
     if outlines:
-      self.ctx.restore()
+      if not clipRestored:
+        clipRestored = True
+        self.ctx.restore()
       self.ctx.set_line_width(1)
+      self.ctx.set_dash([],0)
       self.setColor( self.params.get('areaOutline') )
       for path in outlines:
         self.ctx.append_path(path)
