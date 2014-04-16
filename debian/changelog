@@ -1,4 +1,10 @@
-yabs-graphite-ceres (0.2.6.1) unstable; urgency=low
+yabs-graphite-ceres (0.2.6.4) unstable; urgency=low
+
+  * added movingMaximum 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Wed, 16 Apr 2014 22:09:54 +0400
+
+yabs-graphite-ceres (0.2.6.3.1) unstable; urgency=low
 
   * sort by name by default 
 
