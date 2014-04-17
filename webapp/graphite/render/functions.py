@@ -486,7 +486,7 @@ def divideSeries(requestContext, dividendSeriesList, divisorSeriesList):
 
 
   """
-  if len(divisorSeriesList) != 1 or len(dividendSeriesList) != 1:
+  if len(divisorSeriesList) != 1 or len(dividendSeriesList) < 1:
     raise ValueError("divideSeries second argument must reference exactly 1 series")
 
   divisorSeries = divisorSeriesList[0]
