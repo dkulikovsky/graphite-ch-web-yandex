@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.6.6) unstable; urgency=low
+
+  * fixed divideSeries 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 17 Apr 2014 15:09:48 +0400
+
 yabs-graphite-ceres (0.2.6.5) unstable; urgency=low
 
   * removed metrics sort by default, this should by controlled by functions 
