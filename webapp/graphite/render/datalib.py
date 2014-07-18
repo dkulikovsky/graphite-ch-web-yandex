@@ -14,10 +14,12 @@ limitations under the License."""
 
 import sys
 import time
+import threading
 from graphite.logger import log
 from graphite.storage import STORE
 from graphite.readers import FetchInProgress
 from django.conf import settings
+from graphite.clickhouse import ClickHouseReader
 
 class TimeSeries(list):
   def __init__(self, name, start, end, step, values, consolidate='average'):
@@ -96,7 +98,13 @@ def fetchData(requestContext, pathExpr):
   endTime   = int( time.mktime( requestContext['endTime'].timetuple() ) )
   def _fetchData(pathExpr,startTime, endTime, requestContext, seriesList):
     matching_nodes = STORE.find(pathExpr, startTime, endTime, local=requestContext['localOnly'])
-    fetches = [(node, node.fetch(startTime, endTime)) for node in matching_nodes if node.is_leaf]
+    matching_nodes = list(matching_nodes)
+    if len(matching_nodes) > 1:
+        fetches = ClickHouseReader(pathExpr, multi=1).multi_fetch(startTime, endTime)
+    elif len(matching_nodes) == 1:
+        fetches = [(matching_nodes[0], matching_nodes[0].fetch(startTime, endTime))]
+    else:
+        fetches = []
 
     for node, results in fetches:
       if isinstance(results, FetchInProgress):

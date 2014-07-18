@@ -251,3 +251,8 @@
 # MIDDLEWARE_CLASSES or APPS
 #from graphite.app_settings import *
 
+#STORAGE_FINDERS = (
+#                    'graphite.clickhouse.ClickHouseFinder',
+#                    'graphite.finders.standard.CeresFinder',
+#                    )
+
