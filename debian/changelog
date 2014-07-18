@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.3.0.0) unstable; urgency=low
+
+  * added clickhouse support
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 18 Jul 2014 19:46:31 +0400
+
 yabs-graphite-ceres (0.2.6.7) unstable; urgency=low
 
   * removed second sortByName 
