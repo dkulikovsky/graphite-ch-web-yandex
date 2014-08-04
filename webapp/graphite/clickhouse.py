@@ -4,6 +4,7 @@ import time
 import string
 import redis
 import re
+import sphinxapi
 from graphite.logger import log
 from collections import OrderedDict
 from django.conf import settings
@@ -45,7 +46,7 @@ class ClickHouseReader(object):
         log.info("DEBUG:MULTI: in")
         params_hash = {}
         # fix path, convert it to query appliable to db
-        self.path = FindQuery(self.pathExpr, start_time, end_time).pattern.replace('*','%').replace('?','_')        
+        self.path = FindQuery(self.pathExpr, start_time, end_time).pattern
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
         log.info("DEBUG:MULTI: got query %s and time_step %d" % (params_hash['query'], time_step))
 
@@ -175,7 +176,9 @@ class ClickHouseReader(object):
                 break # break the outer loop, we have already found matching schema
         path_expr = ""
         if self.multi:
-            path_expr = "like(Path, '%s')" % self.path
+            metrics = sphinx_search(self.path)
+            metrics = [ "'%s'" % m.strip() for m in metrics ]
+            path_expr = "Path IN ( %s )" % ", ".join(metrics)
             if agg == 0:
                 query = """SELECT Path, Time,Value FROM graphite WHERE %s\
                             AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
@@ -293,33 +296,125 @@ class ClickHouseReader(object):
 
 class ClickHouseFinder(object):
     def find_nodes(self, query):
-        try:
-            r = redis.StrictRedis(host='localhost', port=6379, db=0)
-        except Exception, e:
-            log.info("FATAL :( failed to connect to redis: %s" % e)
         q = query.pattern
-        start_t = time.time()
-        metrics = r.smembers("metrics:index")
-        log.info("DEBUG:OPT: got find in %.3f" % (time.time() - start_t))
-        q = q.replace(".","\.").replace("*",".*").replace("?",".")
-        qre = re.compile(r'^%s$' % q)
-
-        start_t = time.time()
+        metrics = sphinx_search(q)
         out = []
         for m in metrics:
-            res = qre.match(m)
-            if res:
-                dot = string.find(m, '.', len(query.pattern) - 1)
-                if dot > 0:
-                    out.append(m[:dot+1])
-                else:
-                    out.append(m)
-        log.info("DEBUG:OPT: merged in %.3f" % (time.time() - start_t))
+            dot = string.find(m, '.', len(q) - 1)
+            if dot > 0:
+                out.append(m[:dot+1])
+            else:
+                out.append(m)
         for v in out:
             if v[-1] == ".":
                 yield BranchNode(v[:-1])
             else:
                 yield LeafNode(v,ClickHouseReader(v))
+
+
+def sphinx_query(query):
+    start_star = 0
+    end_star = 0
+    if re.match(r'^\*.*', query):
+        start_star = 1
+    if re.match(r'.*\*$', query):
+        end_star = 1
+
+    query_arr = [ q for q in re.split("\?|\*", query) if q ]
+    if len(query_arr) > 2:
+        for i in xrange(1, len(query_arr)-1):
+            query_arr[i] = "*%s*" % query_arr[i]
+
+    if len(query_arr) >= 2:
+	    if start_star:
+	        query_arr[0] = "*%s*" % query_arr[0]
+	    else:
+	        query_arr[0] = "%s*" % query_arr[0]
+	
+	    if end_star:
+	        query_arr[-1] = "*%s*" % query_arr[-1]
+	    else:
+	        query_arr[-1] = "*%s" % query_arr[-1]
+
+    # this will only work on querys like one_min.bs01g_rt.timings.t9?
+    # querys like one_min.bs0?g_rt.... will be splitted in more than one element in query_arr
+    # all other querys with single word will work fine without any replaces
+    if len(query_arr) == 1:
+        res_query = query.replace("?","*")
+    else:
+        res_query = " ".join(query_arr)
+
+    return res_query
+
+def re_query(query):
+    q = query.replace(".","\.").replace("*",".*").replace("?",".")
+    return q
+
+def sphinx_search(query):
+    re_q = re.compile(r'^%s$' % re_query(query))
+    sphx_q = sphinx_query(query)
+    print "DEBUG: sphinx query %s" % sphx_q
+
+
+    client = sphinxapi.SphinxClient()
+    client.SetServer('127.0.0.1', 9312)
+    try:
+        res = client.Query(sphx_q)
+    except Exception, e:
+        print "Failed to search in sphinx, %s" % e
+        return []
+
+    output = []
+    if res['status'] == 0 and res['total_found'] > 0:
+        for item in res['matches']:
+            m = item['attrs']['metric']
+            if re_q.match(m):
+                output.append(m)
+            else:
+                print "%s didn't match on re" % m
+    else:
+        print "Something went wrong or empty result (founds %d)" % res['total_found']
+
+    return output
+
+########################
+# redis search         #
+########################
+
+        #    def find_nodes(self, query):
+#        try:
+#            r = redis.StrictRedis(host='localhost', port=6379, db=0)
+#        except Exception, e:
+#            log.info("FATAL :( failed to connect to redis: %s" % e)
+#        q = query.pattern
+#        start_t = time.time()
+#        metrics = r.smembers("metrics:index")
+#        log.info("DEBUG:OPT: got find in %.3f" % (time.time() - start_t))
+#        q = q.replace(".","\.").replace("*",".*").replace("?",".")
+#        qre = re.compile(r'^%s$' % q)
+#
+#        start_t = time.time()
+#        out = []
+#        for m in metrics:
+#            res = qre.match(m)
+#            if res:
+#                dot = string.find(m, '.', len(query.pattern) - 1)
+#                if dot > 0:
+#                    out.append(m[:dot+1])
+#                else:
+#                    out.append(m)
+#        log.info("DEBUG:OPT: merged in %.3f" % (time.time() - start_t))
+#        for v in out:
+#            if v[-1] == ".":
+#                yield BranchNode(v[:-1])
+#            else:
+#                yield LeafNode(v,ClickHouseReader(v))
+
+
+#########################
+# CH search             #
+#########################
+
 #
 #        # replace graphite * to %
 #        q = query.pattern.replace('*','%')
