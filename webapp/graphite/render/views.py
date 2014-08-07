@@ -34,7 +34,7 @@ except ImportError:  # Otherwise we fall back to Graphite's bundled version
   from graphite.thirdparty import pytz
 
 from graphite.util import getProfileByUsername, getProfile, json, unpickle
-from graphite.compat import HttpResponse
+
 from graphite.remote_storage import HTTPConnectionWithTimeout
 from graphite.logger import log
 from graphite.render.evaluator import evaluateTarget
@@ -142,7 +142,7 @@ def renderView(request):
     # If data is all we needed, we're done
     format = requestOptions.get('format')
     if format == 'csv':
-      response = HttpResponse(content_type='text/csv')
+      response = HttpResponse(mimetype='text/csv')
       writer = csv.writer(response, dialect='excel')
 
       for series in data:
@@ -186,17 +186,16 @@ def renderView(request):
       if 'jsonp' in requestOptions:
         response = HttpResponse(
           content="%s(%s)" % (requestOptions['jsonp'], json.dumps(series_data)),
-          content_type='text/javascript')
+          mimetype='text/javascript')
       else:
-        response = HttpResponse(content=json.dumps(series_data),
-                                content_type='application/json')
+        response = HttpResponse(content=json.dumps(series_data), mimetype='application/json')
 
       response['Pragma'] = 'no-cache'
       response['Cache-Control'] = 'no-cache'
       return response
 
     if format == 'raw':
-      response = HttpResponse(content_type='text/plain')
+      response = HttpResponse(mimetype='text/plain')
       for series in data:
         response.write( "%s,%d,%d,%d|" % (series.name, series.start, series.end, series.step) )
         response.write( ','.join(map(str,series)) )
@@ -209,7 +208,7 @@ def renderView(request):
       graphOptions['outputFormat'] = 'svg'
 
     if format == 'pickle':
-      response = HttpResponse(content_type='application/pickle')
+      response = HttpResponse(mimetype='application/pickle')
       seriesInfo = [series.getInfo() for series in data]
       pickle.dump(seriesInfo, response, protocol=-1)
 
@@ -228,9 +227,9 @@ def renderView(request):
   if useSVG and 'jsonp' in requestOptions:
     response = HttpResponse(
       content="%s(%s)" % (requestOptions['jsonp'], json.dumps(image)),
-      content_type='text/javascript')
+      mimetype='text/javascript')
   else:
-    response = buildResponse(image, 'image/svg+xml' if useSVG else 'image/png')
+    response = buildResponse(image, useSVG and 'image/svg+xml' or 'image/png')
 
   if useCache:
     cache.set(requestKey, response, cacheTimeout)
@@ -459,8 +458,8 @@ def doImageRender(graphClass, graphOptions):
   return imageData
 
 
-def buildResponse(imageData, content_type="image/png"):
-  response = HttpResponse(imageData, content_type=content_type)
+def buildResponse(imageData, mimetype="image/png"):
+  response = HttpResponse(imageData, mimetype=mimetype)
   response['Cache-Control'] = 'no-cache'
   response['Pragma'] = 'no-cache'
   return response

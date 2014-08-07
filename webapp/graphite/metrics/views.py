@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License."""
 
 import traceback
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.conf import settings
 from graphite.account.models import Profile
-from graphite.compat import HttpResponse, HttpResponseBadRequest
 from graphite.util import getProfile, getProfileByUsername, json
 from graphite.logger import log
 from graphite.storage import STORE
@@ -71,8 +71,7 @@ def search_view(request):
   try:
     query = str( request.REQUEST['query'] )
   except:
-    return HttpResponseBadRequest(content="Missing required parameter 'query'",
-                                  content_type="text/plain")
+    return HttpResponseBadRequest(content="Missing required parameter 'query'", mimetype="text/plain")
   search_request = {
     'query' : query,
     'max_results' : int( request.REQUEST.get('max_results', 25) ),
@@ -104,8 +103,7 @@ def find_view(request):
   try:
     query = str( request.REQUEST['query'] )
   except:
-    return HttpResponseBadRequest(content="Missing required parameter 'query'",
-                                  content_type="text/plain")
+    return HttpResponseBadRequest(content="Missing required parameter 'query'", mimetype="text/plain")
 
   if '.' in query:
     base_path = query.rsplit('.', 1)[0] + '.'
@@ -140,7 +138,7 @@ def find_view(request):
 
   elif format == 'pickle':
     content = pickle_nodes(matches)
-    response = HttpResponse(content, content_type='application/pickle')
+    response = HttpResponse(content, mimetype='application/pickle')
 
   elif format == 'completer':
     results = []
@@ -157,9 +155,7 @@ def find_view(request):
     response = json_response_for(request, { 'metrics' : results})
 
   else:
-    return HttpResponseBadRequest(
-        content="Invalid value for 'format' parameter",
-        content_type="text/plain")
+    return HttpResponseBadRequest(content="Invalid value for 'format' parameter", mimetype="text/plain")
 
   response['Pragma'] = 'no-cache'
   response['Cache-Control'] = 'no-cache'
@@ -309,16 +305,15 @@ def pickle_nodes(nodes):
   return pickle.dumps(nodes_info, protocol=-1)
 
 
-def json_response_for(request, data, content_type='application/json',
-                      jsonp=False, **kwargs):
+def json_response_for(request, data, mimetype='application/json', jsonp=False, **kwargs):
   accept = request.META.get('HTTP_ACCEPT', 'application/json')
   ensure_ascii = accept == 'application/json'
 
   content = json.dumps(data, ensure_ascii=ensure_ascii)
   if jsonp:
     content = "%s(%)" % (jsonp, content)
-    content_type = 'text/javascript'
+    mimetype = 'text/javascript'
   if not ensure_ascii:
-    content_type += ';charset=utf-8'
+    mimetype += ';charset=utf-8'
 
-  return HttpResponse(content, content_type=content_type, **kwargs)
+  return HttpResponse(content, mimetype=mimetype, **kwargs)
