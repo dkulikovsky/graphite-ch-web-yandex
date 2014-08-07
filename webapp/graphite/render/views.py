@@ -78,7 +78,11 @@ def renderView(request):
   except:
     graphOptions['defaultTemplate'] = "default" 
 
-  cache_request_obj = request.GET.copy()
+  if request.method == 'GET':
+    cache_request_obj = request.GET.copy()
+  else:
+    cache_request_obj = request.POST.copy()
+
   # hack request object to add defaultTemplate param
   cache_request_obj.appendlist("template", graphOptions['defaultTemplate'])
 
