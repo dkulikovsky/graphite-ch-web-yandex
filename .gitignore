@@ -47,8 +47,5 @@ debian/files
 debian/python-module-stampdir/
 debian/yabs-graphite-ceres.substvars
 debian/yabs-graphite-ceres/
-<<<<<<< HEAD
 .idea
-=======
 .tox
->>>>>>> eafe49c3f5df7985fbdd0dbce2e8431ea35b9cc2
