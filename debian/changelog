@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.6.8) unstable; urgency=low
+
+  * applied hashing patch 57da2d56b09c349e1cff49b532df7f7678b51e34
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 07 Aug 2014 16:31:06 +0400
+
 yabs-graphite-ceres (0.2.6.7) unstable; urgency=low
 
   * removed second sortByName 
