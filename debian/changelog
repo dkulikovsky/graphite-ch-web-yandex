@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.3.0.4) unstable; urgency=low
+
+  * added deps for sphinxapi 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 14 Aug 2014 15:31:58 +0400
+
 yabs-graphite-ceres (0.3.0.3) unstable; urgency=low
 
   * rebuild because of bad merge
