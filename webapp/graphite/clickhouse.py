@@ -2,7 +2,6 @@ import requests
 import itertools
 import time
 import string
-import redis
 import re
 import sphinxapi
 from graphite.logger import log
