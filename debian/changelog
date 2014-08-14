@@ -6,22 +6,9 @@ yabs-graphite-ceres (0.3.0.4) unstable; urgency=low
 
 yabs-graphite-ceres (0.3.0.3) unstable; urgency=low
 
-  * rebuild because of bad merge
-  * fixed hashing 
+  * applied hashing patch 57da2d56b09c349e1cff49b532df7f7678b51e34
 
- -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 07 Aug 2014 16:18:08 +0400
-
-yabs-graphite-ceres (0.3.0.1) unstable; urgency=low
-
-  * clickhouse plugin moved to sphinx search  
-
- -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Mon, 04 Aug 2014 16:23:48 +0400
-
-yabs-graphite-ceres (0.3.0.0) unstable; urgency=low
-
-  * added clickhouse support
-
- -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 18 Jul 2014 19:46:31 +0400
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 07 Aug 2014 16:31:06 +0400
 
 yabs-graphite-ceres (0.2.6.7) unstable; urgency=low
 
