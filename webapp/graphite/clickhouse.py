@@ -18,15 +18,15 @@ except ImportError:
     from graphite.node import LeafNode, BranchNode
 
 import requests
-ch_url = 'http://localhost:8123/'
+ch_url = 'http://bsgraphite-ch01i.yandex.net:8123/'
 
 class ClickHouseReader(object):
-    __slots__ = ('path','st_schemas', 'multi', 'pathExpr')
+    __slots__ = ('path','st_schemas', 'multi', 'pathExpr', 'storage')
 
-    def __init__(self, path, multi=0):
+    def __init__(self, path, storage="", multi=0):
+        self.storage = storage
         if multi:
             self.multi = 1
-            # replace graphite * to %
             self.pathExpr =  path
         else:
             self.multi = 0
@@ -43,41 +43,11 @@ class ClickHouseReader(object):
             self.st_schemas[name] = defn.split(";")
 
     def multi_fetch(self, start_time, end_time):
-        log.info("DEBUG:MULTI: in")
-        params_hash = {}
+        start_t_g = time.time()
         # fix path, convert it to query appliable to db
         self.path = FindQuery(self.pathExpr, start_time, end_time).pattern
-        params_hash['query'], time_step = self.gen_query(start_time, end_time)
-        log.info("DEBUG:MULTI: got query %s and time_step %d" % (params_hash['query'], time_step))
-
-        start_t = time.time()
-        start_t_g = time.time()
-        dps = requests.get(ch_url, params = params_hash).text
-        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
-        start_t = time.time()
-        if len(dps) == 0:
-            log.info("WARN: empty response from db, nothing to do here")
-            return []
-        else:
-             log.info("DEBUG:MULTI: got data")
-#            log.info("DEBUG:MULTI: got data, size %d" % (len(dps.split("\n")))) 
-
-        # fill values array to fit (end_time - start_time)/time_step
-        data = {}
-        for dp in dps.split("\n"):
-            dp = dp.strip()
-            if len(dp) == 0:
-                continue
-            arr = dp.split("\t")
-            # and now we have 3 field insted of two, first field is path
-            path = arr[0].strip()
-            dp_ts = arr[1].strip()
-            dp_val = arr[2].strip()
-            data.setdefault(path, {})[dp_ts] = float(dp_val)
-        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
-        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
-        #log.info("DEBUG: data = \n %s \n" % data)
-
+        data, time_step = self.get_multi_data(start_time, end_time)
+        # fullfill data fetched from storages to fit timestamps 
         result = []
         start_t = time.time()
         time_info = start_time, end_time, time_step
@@ -85,9 +55,6 @@ class ClickHouseReader(object):
         for path in data.keys():
             # fill output with nans when there is no datapoints
             filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
-    #        log.info("DEBUG:OPT: filled data in %.3f" % (time.time() - start_t))
-
-            # sort data
             start_t = time.time()
             sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
             class tmp_node_obj():
@@ -97,21 +64,74 @@ class ClickHouseReader(object):
             sorted_t += time.time() - start_t
         log.info("DEBUG:OPT: sorted in %.3f" % sorted_t)
         log.info("DEBUG:OPT: all in %.3f" % (time.time() - start_t_g))
-#        log.info("DEBUG: result \n #######################\n%s\n#######################\n" % result)
-
         return result
+
+    def get_multi_data(self, start_time, end_time):
+        query_hash, time_step = self.gen_multi_query(start_time, end_time)
+        data = {}
+        for storage in query_hash.keys():
+            log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (storage, query_hash[storage], time_step))
+            start_t = time.time()
+            start_t_g = time.time()
+
+            url = "http://%s:8123" % storage
+            dps = requests.post(url, query_hash[storage]).text
+            log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
+            start_t = time.time()
+            if len(dps) == 0:
+                log.info("WARN: empty response from db, nothing to do here")
+            else:
+                log.info("DEBUG:MULTI: got data from %s" % storage)
+    
+            # fill values array to fit (end_time - start_time)/time_step
+            for dp in dps.split("\n"):
+                dp = dp.strip()
+                if len(dp) == 0:
+                    continue
+                arr = dp.split("\t")
+                # and now we have 3 field insted of two, first field is path
+                path = arr[0].strip()
+                dp_ts = arr[1].strip()
+                dp_val = arr[2].strip()
+                data.setdefault(path, {})[dp_ts] = float(dp_val)
+            log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
+            log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
+            #log.info("DEBUG: data = \n %s \n" % data)
+        return data, time_step
+
+
+    def gen_multi_query(self, stime, etime):
+        coeff, agg = self.get_coeff(stime, etime)
+        metrics = sphinx_search(self.path)
+        storage_hash = {}
+        for m in metrics.keys():
+            if not storage_hash.has_key(metrics[m]):
+                storage_hash[metrics[m]] = []
+            storage_hash[metrics[m]].append(m)
+        
+        query_hash = {}
+        for storage in storage_hash.keys():
+            log.info("DEBUG:MULTI_QUERY: got %d metrics for %s storage" % (len(storage_hash[storage]), storage))
+            metrics_arr = [ "'%s'" % m.strip() for m in storage_hash[storage]]
+            path_expr = "Path IN ( %s )" % ", ".join(metrics_arr)
+            if agg == 0:
+                query = """SELECT Path, Time,Value FROM graphite WHERE %s\
+                            AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
+            else:
+                query = """SELECT min(Path), min(Time),avg(Value) FROM graphite WHERE %s\
+                            AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
+                            GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
+                            ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
+            query_hash[storage] = query
+        return query_hash, coeff
+
 
     def fetch(self, start_time, end_time):
         params_hash = {}
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
         log.info("DEBUG:SINGLE: got query %s and time_step %d" % (params_hash['query'], time_step))
-
-        start_t = time.time()
-        start_t_g = time.time()
-        dps = requests.get(ch_url, params = params_hash).text
-        #log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
-        start_t = time.time()
-
+        url = "http://%s:8123" % self.storage
+        dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
             return []
@@ -126,23 +146,16 @@ class ClickHouseReader(object):
             dp_ts = arr[0].strip()
             dp_val = arr[1].strip()
             data[dp_ts] = float(dp_val)
-#        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
 
-        start_t = time.time()
         # fill output with nans when there is no datapoints
         filled_data = self.get_filled_data(data, start_time, end_time, time_step)
-#        log.info("DEBUG:OPT: filled data in %.3f" % (time.time() - start_t))
 
         # sort data
-        start_t = time.time()
         sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
-#        log.info("DEBUG:OPT: sorted in %.3f" % (time.time() - start_t))
-#        log.info("DEBUG:OPT: all in %.3f" % (time.time() - start_t_g))
-
         time_info = start_time, end_time, time_step
         return time_info, sorted_data
 
-    def gen_query(self, stime, etime):
+    def get_coeff(self, stime, etime):
         # find metric type and set coeff
         coeff = 60
         agg = 0
@@ -160,7 +173,6 @@ class ClickHouseReader(object):
                             # than no aggregation needed
                             agg = 0
                             coeff = int(seconds)
-#                            log.info("No agg needed")
                         else:
                             agg = 1
                             coeff = int(seconds)
@@ -172,31 +184,21 @@ class ClickHouseReader(object):
                     seconds = self.st_schemas[t][-1].split(":")[0]
                     agg = 1
                     coeff = int(seconds)
-
                 break # break the outer loop, we have already found matching schema
-        path_expr = ""
-        if self.multi:
-            metrics = sphinx_search(self.path)
-            metrics = [ "'%s'" % m.strip() for m in metrics ]
-            path_expr = "Path IN ( %s )" % ", ".join(metrics)
-            if agg == 0:
-                query = """SELECT Path, Time,Value FROM graphite WHERE %s\
-                            AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
-            else:
-                query = """SELECT min(Path), min(Time),avg(Value) FROM graphite WHERE %s\
-                            AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
-                            GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                            ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
-        else:    
-            path_expr = "Path = '%s'" % self.path
-            if agg == 0:
-                query = """SELECT Time,Value FROM graphite WHERE %s\
-                            AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
-            else:
-                query = """SELECT min(Time),avg(Value) FROM graphite WHERE %s\
-                            AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
-                            GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                            ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
+
+        return coeff, agg
+
+    def gen_query(self, stime, etime):
+        coeff, agg = self.get_coeff(stime, etime)
+        path_expr = "Path = '%s'" % self.path
+        if agg == 0:
+            query = """SELECT Time,Value FROM graphite WHERE %s\
+                        AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
+        else:
+            query = """SELECT min(Time),avg(Value) FROM graphite WHERE %s\
+                        AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
+                        GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
+                        ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
         return query, coeff
 
     def get_filled_data(self, data, stime, etime, step):
@@ -210,7 +212,6 @@ class ClickHouseReader(object):
         filled_data = {}
 
         data_keys = sorted(data.keys())
-#        log.info("DEBUG: got data, keys %s, step %s" % (len(data_keys), step))
         data_index = 0
         p_start_t_g = time.time()
         search_time = 0
@@ -242,24 +243,6 @@ class ClickHouseReader(object):
                         ts_miss += 1
                         filled_data[ts] = None
                         break
-#                        for ts_tmp in xrange(int(ts), int(ts)+step, 1):
-#                        ts_tmp = unicode(ts_tmp)
-#                        if data.has_key(ts_tmp):
-#                            filled_data[ts] = data[ts_tmp]
-#                            data_index += 1
-#                            ts_miss += 1
-#                            continue
-#
-#                for ts_tmp in data_keys:
-#                    if ts_tmp > ts and (ts_tmp - ts) < step:
-#                        filled_data[ts] = data[ts_tmp]
-#                        ts_miss += 1
-#                        continue
-#                    elif ts_tmp < ts:
-#                        data_keys.pop()
-#                        continue
-#                    elif ts_tmp > ts:
-#                        filled_data[ts] = None
                 search_time += time.time() - p_start_t
             # loop didn't break on continue statements, set it default NaN value
             if not filled_data.has_key(ts):
@@ -277,29 +260,13 @@ class ClickHouseReader(object):
         end = max(start, time.time())
         return IntervalSet([Interval(start, end)])
 
-#    def get_intervals(self):
-#        log.info("DEBUG:get_intervals: in")
-#        # TODO use cyanite info
-#        start_t = time.time()
-#        req = requests.get(ch_url, params={ 'query': "SELECT min(Time), max(Time) FROM default.graphite WHERE Path = '%s'" % self.path}).text
-#        #log.info("DEBUG:OPT: got intervals in %.3f" % (time.time() - start_t))
-#
-#        if len(req) == 0:
-#            return IntervalSet([])
-#        res = req.split("\t")
-#        if len(res) != 2:
-#            return IntervalSet([])
-#
-#        log.info("DEBUG:get_intervals: out")
-#        return IntervalSet([Interval(int(res[0]), int(res[1]))])
-
 
 class ClickHouseFinder(object):
     def find_nodes(self, query):
         q = query.pattern
         metrics = sphinx_search(q)
         out = []
-        for m in metrics:
+        for m in metrics.keys():
             dot = string.find(m, '.', len(q) - 1)
             if dot > 0:
                 out.append(m[:dot+1])
@@ -309,7 +276,7 @@ class ClickHouseFinder(object):
             if v[-1] == ".":
                 yield BranchNode(v[:-1])
             else:
-                yield LeafNode(v,ClickHouseReader(v))
+                yield LeafNode(v,ClickHouseReader(v, storage=metrics[v]))
 
 
 def sphinx_query(query):
@@ -353,99 +320,19 @@ def re_query(query):
 def sphinx_search(query):
     re_q = re.compile(r'^%s$' % re_query(query))
     sphx_q = sphinx_query(query)
-    print "DEBUG: sphinx query %s" % sphx_q
-
-
     client = sphinxapi.SphinxClient()
-    client.SetServer('127.0.0.1', 9312)
+    sphinx_server = getattr(settings, 'SPHINX_SERVER')
+    client.SetServer(sphinx_server, 9312)
+    client.SetLimits(0,100000)
     try:
         res = client.Query(sphx_q)
     except Exception, e:
-        print "Failed to search in sphinx, %s" % e
-        return []
-
-    output = []
+        return {}
+    output = {}
     if res['status'] == 0 and res['total_found'] > 0:
         for item in res['matches']:
             m = item['attrs']['metric']
             if re_q.match(m):
-                output.append(m)
-            else:
-                print "%s didn't match on re" % m
-    else:
-        print "Something went wrong or empty result (founds %d)" % res['total_found']
-
+                output[m]=item['attrs']['storage']
+    log.info("DEBUG: got %d metrics" % len(output))
     return output
-
-########################
-# redis search         #
-########################
-
-        #    def find_nodes(self, query):
-#        try:
-#            r = redis.StrictRedis(host='localhost', port=6379, db=0)
-#        except Exception, e:
-#            log.info("FATAL :( failed to connect to redis: %s" % e)
-#        q = query.pattern
-#        start_t = time.time()
-#        metrics = r.smembers("metrics:index")
-#        log.info("DEBUG:OPT: got find in %.3f" % (time.time() - start_t))
-#        q = q.replace(".","\.").replace("*",".*").replace("?",".")
-#        qre = re.compile(r'^%s$' % q)
-#
-#        start_t = time.time()
-#        out = []
-#        for m in metrics:
-#            res = qre.match(m)
-#            if res:
-#                dot = string.find(m, '.', len(query.pattern) - 1)
-#                if dot > 0:
-#                    out.append(m[:dot+1])
-#                else:
-#                    out.append(m)
-#        log.info("DEBUG:OPT: merged in %.3f" % (time.time() - start_t))
-#        for v in out:
-#            if v[-1] == ".":
-#                yield BranchNode(v[:-1])
-#            else:
-#                yield LeafNode(v,ClickHouseReader(v))
-
-
-#########################
-# CH search             #
-#########################
-
-#
-#        # replace graphite * to %
-#        q = query.pattern.replace('*','%')
-#        q = q.replace('?','_')
-#
-#        params_hash = { 'query': "SELECT distinct(Path) FROM graphite WHERE like(Path, '%s')" % q }
-#        start_t = time.time()
-#        paths = requests.get(ch_url,params=params_hash).text
-#        log.info("DEBUG:OPT: got find in %.3f" % (time.time() - start_t))
-#        start_t = time.time()
-#        if len(paths) == 0:
-#            return
-#
-#        paths_hash = {}
-#        for path in paths.split("\n"):
-#            path = path.strip()
-#            if len(path) == 0:
-#                continue
-#            # find first dot in metric definition and return 
-#            # only next layer of metrics, not all possible matches
-#            dot = string.find(path, '.', len(query.pattern) - 1)
-#            if dot > 0:
-#                paths_hash[path[:dot+1]] = 1
-#            else:
-#                paths_hash[path] = 1
-#
-#        log.info("DEBUG:OPT: merged in %.3f" % (time.time() - start_t))
-#        # now we have a layer of metric, if metric end in . than is's a Branch.
-#        # Leaf otherwise. 
-#        for v in paths_hash.keys():
-#            if v[-1] == ".":
-#                yield BranchNode(v[:-1])
-#            else:
-#                yield LeafNode(v,ClickHouseReader(v))
