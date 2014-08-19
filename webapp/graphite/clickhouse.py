@@ -204,6 +204,7 @@ class ClickHouseReader(object):
         # some stat about how datapoint manage to fit timestamp map 
         ts_hit = 0
         ts_miss = 0
+        ts_fail = 0
         start_t = time.time() # for debugging timeouts
         stime = stime - (stime % step)
         data_ts_min = int(min(data.keys()))
@@ -214,10 +215,12 @@ class ClickHouseReader(object):
         data_index = 0
         p_start_t_g = time.time()
         search_time = 0
+        log.info("stime %d, etime %s, step %d, point %d" % (stime, etime, step, len(data)))
         for ts in xrange(stime, etime, step):
             if ts < data_stime:
                 # we have no data for this timestamp, nothing to do here
                 filled_data[ts] = None
+                ts_fail += 1
                 continue
 
             ts = unicode(ts)
@@ -230,27 +233,27 @@ class ClickHouseReader(object):
                 p_start_t = time.time()
                 for i in xrange(data_index, len(data_keys)):
                     ts_tmp = int(data_keys[i])
-                    if ts_tmp > int(ts) and (ts_tmp - int(ts)) < step:
+                    if ts_tmp >= int(ts) and (ts_tmp - int(ts)) < step:
                         filled_data[ts] = data[data_keys[data_index]]
                         data_index += 1
                         ts_miss += 1
                         break
-                    elif ts_tmp < ts:
+                    elif ts_tmp < int(ts):
                         data_index += 1
                         continue
-                    elif ts_tmp > ts:
-                        ts_miss += 1
+                    elif ts_tmp > int(ts):
+                        ts_fail += 1
                         filled_data[ts] = None
                         break
                 search_time += time.time() - p_start_t
             # loop didn't break on continue statements, set it default NaN value
             if not filled_data.has_key(ts):
-                ts_miss += 1
+#                ts_fail += 1
                 filled_data[ts] = None
 #        log.info("DEBUG:OPT: loop in %.3f, search in %.3f" % ((time.time() - start_t), search_time))
 
 #        log.info("DEBUG:OPT: filled data in %.3f" % (time.time() - start_t))
-#        log.info("DEBUG: hit %d, miss %d" % (ts_hit, ts_miss))
+        log.info("DEBUG: hit %d, miss %d, fail %d" % (ts_hit, ts_miss, ts_fail))
         return filled_data
 
     def get_intervals(self):
@@ -292,15 +295,15 @@ def sphinx_query(query):
             query_arr[i] = "*%s*" % query_arr[i]
 
     if len(query_arr) >= 2:
-	    if start_star:
-	        query_arr[0] = "*%s*" % query_arr[0]
-	    else:
-	        query_arr[0] = "%s*" % query_arr[0]
-	
-	    if end_star:
-	        query_arr[-1] = "*%s*" % query_arr[-1]
-	    else:
-	        query_arr[-1] = "*%s" % query_arr[-1]
+        if start_star:
+            query_arr[0] = "*%s*" % query_arr[0]
+        else:
+            query_arr[0] = "%s*" % query_arr[0]
+    
+        if end_star:
+            query_arr[-1] = "*%s*" % query_arr[-1]
+        else:
+            query_arr[-1] = "*%s" % query_arr[-1]
 
     # this will only work on querys like one_min.bs01g_rt.timings.t9?
     # querys like one_min.bs0?g_rt.... will be splitted in more than one element in query_arr
