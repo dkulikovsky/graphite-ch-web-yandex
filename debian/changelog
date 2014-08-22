@@ -1,3 +1,9 @@
+yabs-graphite-ceres (0.2.6.10) precise; urgency=low
+
+  * fixed remote_storage caching 
+
+ -- Kirill Zhalnin <kiwi@yandex-team.ru>  Fri, 22 Aug 2014 16:21:42 +0400
+
 yabs-graphite-ceres (0.2.6.9) unstable; urgency=low
 
   * fixed hashing in my way 
