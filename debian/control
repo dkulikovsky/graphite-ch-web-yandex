@@ -1,4 +1,4 @@
-Source: yabs-graphite-ceres
+Source: graphite-ch
 Section: misc
 Priority: extra
 Maintainer: Anna Sysoeva <antrue@yandex-team.ru>
@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 8.0.0), cdbs
 Standards-Version: 3.9.3
 Homepage: http://github.com/graphite-project/
 
-Package: yabs-graphite-ceres
+Package: graphite-ch
 Architecture: all
 Depends: python-cairo, 
  python-tz, 
