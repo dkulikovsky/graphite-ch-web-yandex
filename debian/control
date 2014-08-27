@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>
 Build-Depends: debhelper (>= 8.0.0), cdbs
 Standards-Version: 3.9.3
-Homepage: http://github.com/graphite-project/
+Homepage: https://github.yandex-team.ru/graphite/graphite-web/tree/clickhouse
 
 Package: graphite-ch
 Architecture: all
