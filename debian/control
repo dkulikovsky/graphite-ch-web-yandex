@@ -9,6 +9,7 @@ Homepage: https://github.yandex-team.ru/graphite/graphite-web/tree/clickhouse
 Package: graphite-ch
 Architecture: all
 Depends: python-cairo, 
+ yabs-ceres,
  python-tz, 
  python-pyparsing, 
  python-django-1.4 | python-django (>= 1.4) | python-django-1.6, 
