@@ -17,7 +17,7 @@ except ImportError:
     from graphite.node import LeafNode, BranchNode
 
 import requests
-ch_url = 'http://bsgraphite-ch01i.yandex.net:8123/'
+ch_url = 'http://localhost:8123/'
 
 class ClickHouseReader(object):
     __slots__ = ('path','st_schemas', 'multi', 'pathExpr', 'storage')
@@ -33,9 +33,9 @@ class ClickHouseReader(object):
 
         # init storage schemas
         # schemas = getattr(settings, 'CH_STORAGE_SCHEMA')
-        schemas = [ 'one_min=60:14;300:30;600:1000',
-                    'five_sec=5:1;10:2;60:14;300:1000',
-                    'one_sec=1:1;5:14;60:300' ]
+        schemas = [ 'one_min=60:150;300:30;600:1000',
+                    'five_sec=5:150;10:2;60:14;300:1000',
+                    'one_sec=1:150;5:14;60:300' ]
         self.st_schemas = {}
         for sch in schemas:
             (name,defn) = sch.split("=")
