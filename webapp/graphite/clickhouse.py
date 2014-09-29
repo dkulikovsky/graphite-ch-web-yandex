@@ -4,6 +4,8 @@ import time
 import string
 import re
 import sphinxapi
+import ConfigParser
+from pprint import pprint
 from graphite.logger import log
 from collections import OrderedDict
 from django.conf import settings
@@ -16,11 +18,8 @@ except ImportError:
     from graphite.intervals import Interval, IntervalSet
     from graphite.node import LeafNode, BranchNode
 
-import requests
-ch_url = 'http://localhost:8123/'
-
 class ClickHouseReader(object):
-    __slots__ = ('path','st_schemas', 'multi', 'pathExpr', 'storage')
+    __slots__ = ('path','schema', 'periods', 'multi', 'pathExpr', 'storage')
 
     def __init__(self, path, storage="", multi=0):
         self.storage = storage
@@ -30,16 +29,39 @@ class ClickHouseReader(object):
         else:
             self.multi = 0
             self.path = path
+        self.schema = {}
+        self.periods = []
+        self.load_storage_schema()
 
-        # init storage schemas
-        # schemas = getattr(settings, 'CH_STORAGE_SCHEMA')
-        schemas = [ 'one_min=60:150;300:30;600:1000',
-                    'five_sec=5:150;10:2;60:14;300:1000',
-                    'one_sec=1:150;5:14;60:300' ]
-        self.st_schemas = {}
-        for sch in schemas:
-            (name,defn) = sch.split("=")
-            self.st_schemas[name] = defn.split(";")
+    def load_storage_schema(self):
+        conf = "/etc/cacher/storage_schema.ini"
+        config = ConfigParser.ConfigParser()
+        try:
+            config.read(conf)
+        except Exception, e:
+            log.info("Failed to read conf file %s, reason %s" % (conf, e))
+            return
+        if not config.sections():
+            log.info("absent or corrupted config file %s" % conf)
+            return 
+        
+        schema = {}
+        periods = []
+        for section in config.sections():
+            if section == 'main':
+                periods = [ int(x) for x in config.get("main", "periods").split(",") ]
+                continue
+            if not schema.has_key(section):
+                schema[section] = {}
+                schema[section]['ret'] = []
+                schema[section]['patt'] = config.get(section, 'pattern')
+            v = config.get(section, "retentions")
+            for item in v.split(","):
+                schema[section]['ret'].append(int(item))
+        self.schema = schema
+        self.periods = periods
+        log.info("DEBUG: got schema [ %s ], got periods [ %s ]" % (pprint(schema), pprint(periods)))
+        return 
 
     def multi_fetch(self, start_time, end_time):
         start_t_g = time.time()
@@ -158,14 +180,15 @@ class ClickHouseReader(object):
         # find metric type and set coeff
         coeff = 60
         agg = 0
-        for t in self.st_schemas.keys():
-            if re.match(r'^%s.*$' % t, self.path):
+        for t in self.schema.keys():
+            if re.match(r'^%s.*$' % self.schema[t]['patt'], self.path):
                 # calc retention interval for stime
                 delta = 0
                 loop_index = 0
-                for item in self.st_schemas[t]:
-                    (seconds, days) = item.split(":")
-                    delta += int(days)*86400
+                for seconds in self.schema[t]['ret']:
+                    # ugly month average 365/12 ~= 30.5
+                    # TODO: fix to real delta
+                    delta += int(self.periods[loop_index]) * 30.5 * 86400
                     if stime > (time.time() - delta):
                         if loop_index == 0:
                             # if start_time is in first retention interval
@@ -178,13 +201,14 @@ class ClickHouseReader(object):
                         break
                     loop_index += 1
                 if agg == 0 and (stime < (time.time() - delta)):
-                    # start_time for requested period is even earlier than
+                    # start_time for requested period is even earlier than defined periods
                     # take last retention
-                    seconds = self.st_schemas[t][-1].split(":")[0]
+                    seconds = self.schema[t]['ret'][-1]
                     agg = 1
                     coeff = int(seconds)
                 break # break the outer loop, we have already found matching schema
 
+        log.info("DEBUG: got coeff: %d, agg = %d" % (coeff, agg))
         return coeff, agg
 
     def gen_query(self, stime, etime):
