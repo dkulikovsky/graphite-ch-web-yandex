@@ -312,6 +312,10 @@ def sphinx_query(query):
         start_star = 1
     if re.match(r'.*\*$', query):
         end_star = 1
+    
+    # replace braces with simple wildcard
+    if re.search('{.*}', query):
+        query = re.sub('{.*}', "*", query)
 
     query_arr = [ q for q in re.split("\?|\*", query) if q ]
     if len(query_arr) > 2:
@@ -341,6 +345,8 @@ def sphinx_query(query):
 
 def re_query(query):
     q = query.replace(".","\.").replace("*",".*").replace("?",".")
+    # if query has braces, replace it with regexp analagoue
+    q = q.replace("{", "(?:").replace("}",")").replace(",","|")
     return q
 
 def sphinx_search(query):
