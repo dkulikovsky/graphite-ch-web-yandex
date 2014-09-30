@@ -1,3 +1,11 @@
+graphite-ch (0.1.2) unstable; urgency=low
+
+  * added storage schema handling
+  * added braces
+  * moved to distributed clickhouse table 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 30 Sep 2014 15:42:31 +0400
+
 graphite-ch (0.1.1) unstable; urgency=low
 
   * fixed deps 
