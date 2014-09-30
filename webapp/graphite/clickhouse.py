@@ -32,6 +32,11 @@ class ClickHouseReader(object):
         self.schema = {}
         self.periods = []
         self.load_storage_schema()
+        try:
+            self.storage = getattr(settings, 'CLICKHOUSE_SERVER')
+        except:
+            log.info("Storage is not defined in settings, using default 127.0.0.1")
+            self.storage = "127.0.0.1"
 
     def load_storage_schema(self):
         conf = "/etc/cacher/storage_schema.ini"
@@ -90,6 +95,7 @@ class ClickHouseReader(object):
     def get_multi_data(self, start_time, end_time):
         query_hash, time_step = self.gen_multi_query(start_time, end_time)
         data = {}
+        # query_hash now have only one storage beceause clickhouse has distributed table engine
         for storage in query_hash.keys():
             log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (storage, query_hash[storage], time_step))
             start_t = time.time()
@@ -125,10 +131,11 @@ class ClickHouseReader(object):
         coeff, agg = self.get_coeff(stime, etime)
         metrics = sphinx_search(self.path)
         storage_hash = {}
+        # a bit of legacy code, where search could result in several queries in different databases
+        # but now clickhouse has distributed table and multistorage arch is legacy now
+        storage_hash[self.storage] = []
         for m in metrics.keys():
-            if not storage_hash.has_key(metrics[m]):
-                storage_hash[metrics[m]] = []
-            storage_hash[metrics[m]].append(m)
+            storage_hash[self.storage].append(m)
         
         query_hash = {}
         for storage in storage_hash.keys():
@@ -136,10 +143,10 @@ class ClickHouseReader(object):
             metrics_arr = [ "'%s'" % m.strip() for m in storage_hash[storage]]
             path_expr = "Path IN ( %s )" % ", ".join(metrics_arr)
             if agg == 0:
-                query = """SELECT Path, Time,Value FROM graphite WHERE %s\
+                query = """SELECT Path, Time,Value FROM graphite_d WHERE %s\
                             AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
             else:
-                query = """SELECT min(Path), min(Time),avg(Value) FROM graphite WHERE %s\
+                query = """SELECT min(Path), min(Time),avg(Value) FROM graphite_d WHERE %s\
                             AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
                             GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
                             ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
@@ -215,10 +222,10 @@ class ClickHouseReader(object):
         coeff, agg = self.get_coeff(stime, etime)
         path_expr = "Path = '%s'" % self.path
         if agg == 0:
-            query = """SELECT Time,Value FROM graphite WHERE %s\
+            query = """SELECT Time,Value FROM graphite_d WHERE %s\
                         AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
         else:
-            query = """SELECT min(Time),avg(Value) FROM graphite WHERE %s\
+            query = """SELECT min(Time),avg(Value) FROM graphite_d WHERE %s\
                         AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
                         ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
@@ -365,6 +372,6 @@ def sphinx_search(query):
         for item in res['matches']:
             m = item['attrs']['metric']
             if re_q.match(m):
-                output[m]=item['attrs']['storage']
+                output[m] = 1
     log.info("DEBUG: got %d metrics" % len(output))
     return output
