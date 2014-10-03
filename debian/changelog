@@ -1,3 +1,9 @@
+graphite-ch (0.1.2) unstable; urgency=low
+
+  * moved to mstree search 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 03 Oct 2014 19:02:59 +0400
+
 graphite-ch (0.1.1) unstable; urgency=low
 
   * fixed deps 
