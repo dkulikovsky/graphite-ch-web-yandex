@@ -10,6 +10,7 @@ from graphite.logger import log
 from collections import OrderedDict
 from django.conf import settings
 from graphite.storage import FindQuery
+from graphite.conductor import Conductor
 
 try:
     from graphite_api.intervals import Interval, IntervalSet
@@ -93,65 +94,58 @@ class ClickHouseReader(object):
         return result
 
     def get_multi_data(self, start_time, end_time):
-        query_hash, time_step = self.gen_multi_query(start_time, end_time)
+        query, time_step = self.gen_multi_query(start_time, end_time)
         data = {}
         # query_hash now have only one storage beceause clickhouse has distributed table engine
-        for storage in query_hash.keys():
-            log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (storage, query_hash[storage], time_step))
-            start_t = time.time()
-            start_t_g = time.time()
+        log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
+        start_t = time.time()
+        start_t_g = time.time()
 
-            url = "http://%s:8123" % storage
-            dps = requests.post(url, query_hash[storage]).text
-            log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
-            start_t = time.time()
-            if len(dps) == 0:
-                log.info("WARN: empty response from db, nothing to do here")
-            else:
-                log.info("DEBUG:MULTI: got data from %s" % storage)
+        url = "http://%s:8123" % self.storage
+        dps = requests.post(url, query).text
+        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
+        start_t = time.time()
+        if len(dps) == 0:
+            log.info("WARN: empty response from db, nothing to do here")
+        else:
+            log.info("DEBUG:MULTI: got data from %s" % self.storage)
     
-            # fill values array to fit (end_time - start_time)/time_step
-            for dp in dps.split("\n"):
-                dp = dp.strip()
-                if len(dp) == 0:
-                    continue
-                arr = dp.split("\t")
-                # and now we have 3 field insted of two, first field is path
-                path = arr[0].strip()
-                dp_ts = arr[1].strip()
-                dp_val = arr[2].strip()
-                data.setdefault(path, {})[dp_ts] = float(dp_val)
-            log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
-            log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
-            #log.info("DEBUG: data = \n %s \n" % data)
+        # fill values array to fit (end_time - start_time)/time_step
+        for dp in dps.split("\n"):
+            dp = dp.strip()
+            if len(dp) == 0:
+                continue
+            arr = dp.split("\t")
+            # and now we have 3 field insted of two, first field is path
+            path = arr[0].strip()
+            dp_ts = arr[1].strip()
+            dp_val = arr[2].strip()
+            data.setdefault(path, {})[dp_ts] = float(dp_val)
+        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
+        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
+        #log.info("DEBUG: data = \n %s \n" % data)
         return data, time_step
 
 
     def gen_multi_query(self, stime, etime):
         coeff, agg = self.get_coeff(stime, etime)
-        metrics = sphinx_search(self.path)
-        storage_hash = {}
-        # a bit of legacy code, where search could result in several queries in different databases
-        # but now clickhouse has distributed table and multistorage arch is legacy now
-        storage_hash[self.storage] = []
-        for m in metrics.keys():
-            storage_hash[self.storage].append(m)
+        metrics_tmp = mstree_search(self.path)
+        metrics = []
+        for m in metrics:
+            if not m[-1] == ".":
+                metrics.append("'%s'" % m.strip())
         
-        query_hash = {}
-        for storage in storage_hash.keys():
-            log.info("DEBUG:MULTI_QUERY: got %d metrics for %s storage" % (len(storage_hash[storage]), storage))
-            metrics_arr = [ "'%s'" % m.strip() for m in storage_hash[storage]]
-            path_expr = "Path IN ( %s )" % ", ".join(metrics_arr)
-            if agg == 0:
-                query = """SELECT Path, Time,Value FROM graphite_d WHERE %s\
-                            AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
-            else:
-                query = """SELECT min(Path), min(Time),avg(Value) FROM graphite_d WHERE %s\
-                            AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
-                            GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                            ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
-            query_hash[storage] = query
-        return query_hash, coeff
+        query = ""
+        path_expr = "Path IN ( %s )" % ", ".join(metrics)
+        if agg == 0:
+            query = """SELECT Path, Time,Value FROM graphite_d WHERE %s\
+                        AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
+        else:
+            query = """SELECT min(Path), min(Time),avg(Value) FROM graphite_d WHERE %s\
+                        AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
+                        GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
+                        ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
+        return query, coeff
 
 
     def fetch(self, start_time, end_time):
@@ -294,22 +288,71 @@ class ClickHouseReader(object):
         return IntervalSet([Interval(start, end)])
 
 
+re_braces = re.compile(r'({[^{},]*,[^{}]*})')
+re_conductor = re.compile(r'(^%[\w@-]+)$')
+conductor = Conductor()
+
+def braces_glob(s):
+  match = re_braces.search(s)
+
+  if not match:
+    return [s]
+
+  res = set()
+  sub = match.group(1)
+  open_pos, close_pos = match.span(1)
+
+  for bit in sub.strip('{}').split(','):
+    res.update(braces_glob(s[:open_pos] + bit + s[close_pos:]))
+
+  return list(res)
+
+def conductor_glob(pattern):
+  parts = pattern.split('.')
+  pos = 0
+  found = False
+  for part in parts:
+    if re_conductor.match(part):
+      found = True
+      break
+    pos += 1
+  if not found:
+    return braces_glob(pattern)
+  cexpr = parts[pos]
+  hosts = conductor.expandExpression(cexpr)
+
+  if not hosts:
+    return braces_glob(pattern)
+  hosts = [host.replace('.','_') for host in hosts]
+
+  braces_expr = '{' + ','.join(hosts) + '}'
+  parts[pos] = braces_expr
+
+  return braces_glob('.'.join(parts))
+
 class ClickHouseFinder(object):
     def find_nodes(self, query):
         q = query.pattern
-        metrics = sphinx_search(q)
-        out = []
-        for m in metrics.keys():
-            dot = string.find(m, '.', len(q) - 1)
-            if dot > 0:
-                out.append(m[:dot+1])
-            else:
-                out.append(m)
-        for v in out:
+        metrics = mstree_search(q)
+        for v in metrics:
             if v[-1] == ".":
                 yield BranchNode(v[:-1])
             else:
-                yield LeafNode(v,ClickHouseReader(v, storage=metrics[v]))
+                yield LeafNode(v,ClickHouseReader(v))
+
+
+def mstree_search(q):
+    out = []
+    for query in conductor_glob(q):
+	    try:
+	        res = requests.get("http://localhost:7000/search?query=%s" % query)
+	    except Exception, e:
+	        return []
+	    for item in res.text.split("\n"):
+	        if not item: continue
+	        out.append(item)
+    log.info("DEBUG:mstree_search: got %d items from search" % len(out))
+    return out
 
 
 def sphinx_query(query):
