@@ -131,7 +131,7 @@ class ClickHouseReader(object):
         coeff, agg = self.get_coeff(stime, etime)
         metrics_tmp = mstree_search(self.path)
         metrics = []
-        for m in metrics:
+        for m in metrics_tmp:
             if not m[-1] == ".":
                 metrics.append("'%s'" % m.strip())
         
