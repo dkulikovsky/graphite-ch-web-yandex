@@ -186,6 +186,9 @@ function createCalendarWindow() {
   startDateControl.on('select', calendarSelectionMade);
   endDateControl.on('select', calendarSelectionMade);
   // Time controls
+  Ext.override(Ext.form.TimeField, {
+    initDate: '2/1/2008'
+  });
   startTimeControl = new Ext.form.TimeField({
     id: 'start-time',
     increment: 30,
