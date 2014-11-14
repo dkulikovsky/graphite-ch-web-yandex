@@ -36,7 +36,6 @@ class ClickHouseReader(object):
         try:
             self.storage = getattr(settings, 'CLICKHOUSE_SERVER')
         except:
-            log.info("Storage is not defined in settings, using default 127.0.0.1")
             self.storage = "127.0.0.1"
 
     def load_storage_schema(self):
@@ -66,7 +65,7 @@ class ClickHouseReader(object):
                 schema[section]['ret'].append(int(item))
         self.schema = schema
         self.periods = periods
-        log.info("DEBUG: got schema [ %s ], got periods [ %s ]" % (pprint(schema), pprint(periods)))
+#        log.info("DEBUG: got schema [ %s ], got periods [ %s ]" % (pprint(schema), pprint(periods)))
         return 
 
     def multi_fetch(self, start_time, end_time):
@@ -89,8 +88,8 @@ class ClickHouseReader(object):
                     self.path = path
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
             sorted_t += time.time() - start_t
-        log.info("DEBUG:OPT: sorted in %.3f" % sorted_t)
-        log.info("DEBUG:OPT: all in %.3f" % (time.time() - start_t_g))
+#        log.info("DEBUG:OPT: sorted in %.3f" % sorted_t)
+        log.info("RENDER:multi_fetch: in %.3f" % (time.time() - start_t_g))
         return result
 
     def get_multi_data(self, start_time, end_time):
@@ -103,12 +102,13 @@ class ClickHouseReader(object):
 
         url = "http://%s:8123" % self.storage
         dps = requests.post(url, query).text
-        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
+#        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
+        fetch_time = time.time() - start_t
         start_t = time.time()
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
-        else:
-            log.info("DEBUG:MULTI: got data from %s" % self.storage)
+#        else:
+#            log.info("DEBUG:MULTI: got data from %s" % self.storage)
     
         # fill values array to fit (end_time - start_time)/time_step
         for dp in dps.split("\n"):
@@ -121,9 +121,10 @@ class ClickHouseReader(object):
             dp_ts = arr[1].strip()
             dp_val = arr[2].strip()
             data.setdefault(path, {})[dp_ts] = float(dp_val)
-        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
-        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
+#        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
+#        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
         #log.info("DEBUG: data = \n %s \n" % data)
+        log.info("DEBUG:get_multi_data: fetch = %s, parse = %s, path = %s" % (fetch_time, time.time() - start_t, self.path))
         return data, time_step
 
 
@@ -149,9 +150,10 @@ class ClickHouseReader(object):
 
 
     def fetch(self, start_time, end_time):
+        start_t_g = time.time()
         params_hash = {}
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
-        log.info("DEBUG:SINGLE: got query %s and time_step %d" % (params_hash['query'], time_step))
+#        log.info("DEBUG:SINGLE: got query %s and time_step %d" % (params_hash['query'], time_step))
         url = "http://%s:8123" % self.storage
         dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
@@ -175,6 +177,7 @@ class ClickHouseReader(object):
         # sort data
         sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
         time_info = start_time, end_time, time_step
+        log.info("RENDER:fetch: in %.3f" % (time.time() - start_t_g))
         return time_info, sorted_data
 
     def get_coeff(self, stime, etime):
@@ -209,7 +212,7 @@ class ClickHouseReader(object):
                     coeff = int(seconds)
                 break # break the outer loop, we have already found matching schema
 
-        log.info("DEBUG: got coeff: %d, agg = %d" % (coeff, agg))
+#        log.info("DEBUG: got coeff: %d, agg = %d" % (coeff, agg))
         return coeff, agg
 
     def gen_query(self, stime, etime):
@@ -240,7 +243,6 @@ class ClickHouseReader(object):
         data_index = 0
         p_start_t_g = time.time()
         search_time = 0
-        log.info("stime %d, etime %s, step %d, point %d" % (stime, etime, step, len(data)))
         for ts in xrange(stime, etime, step):
             if ts < data_stime:
                 # we have no data for this timestamp, nothing to do here
@@ -278,7 +280,7 @@ class ClickHouseReader(object):
 #        log.info("DEBUG:OPT: loop in %.3f, search in %.3f" % ((time.time() - start_t), search_time))
 
 #        log.info("DEBUG:OPT: filled data in %.3f" % (time.time() - start_t))
-        log.info("DEBUG: hit %d, miss %d, fail %d" % (ts_hit, ts_miss, ts_fail))
+#        log.info("DEBUG: hit %d, miss %d, fail %d" % (ts_hit, ts_miss, ts_fail))
         return filled_data
 
     def get_intervals(self):
@@ -351,7 +353,7 @@ def mstree_search(q):
 	    for item in res.text.split("\n"):
 	        if not item: continue
 	        out.append(item)
-    log.info("DEBUG:mstree_search: got %d items from search" % len(out))
+#    log.info("DEBUG:mstree_search: got %d items from search" % len(out))
     return out
 
 
@@ -416,5 +418,5 @@ def sphinx_search(query):
             m = item['attrs']['metric']
             if re_q.match(m):
                 output[m] = 1
-    log.info("DEBUG: got %d metrics" % len(output))
+#    log.info("DEBUG: got %d metrics" % len(output))
     return output
