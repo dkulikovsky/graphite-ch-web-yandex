@@ -93,7 +93,7 @@ class ClickHouseReader(object):
         return result
 
     def get_multi_data(self, start_time, end_time):
-        query, time_step = self.gen_multi_query(start_time, end_time)
+        query, time_step, num = self.gen_multi_query(start_time, end_time)
         data = {}
         # query_hash now have only one storage beceause clickhouse has distributed table engine
         log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
@@ -124,7 +124,7 @@ class ClickHouseReader(object):
 #        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
 #        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
         #log.info("DEBUG: data = \n %s \n" % data)
-        log.info("DEBUG:get_multi_data: fetch = %s, parse = %s, path = %s" % (fetch_time, time.time() - start_t, self.path))
+        log.info("DEBUG:get_multi_data: fetch = %s, parse = %s, path = %s, num = %s" % (fetch_time, time.time() - start_t, self.path, num))
         return data, time_step
 
 
@@ -138,15 +138,19 @@ class ClickHouseReader(object):
         
         query = ""
         path_expr = "Path IN ( %s )" % ", ".join(metrics)
+        num = len(metrics)
         if agg == 0:
             query = """SELECT Path, Time,Value FROM graphite_d WHERE %s\
-                        AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
+                        AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
+                        Date <= toDate(toDateTime(%d))
+                        ORDER BY Time""" % (path_expr, stime, etime, stime, etime) 
         else:
             query = """SELECT min(Path), min(Time),avg(Value) FROM graphite_d WHERE %s\
-                        AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
+                        AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d 
+                        AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
-        return query, coeff
+                        ORDER BY kvantT""" % (path_expr, stime, etime, stime, etime, coeff, coeff) 
+        return query, coeff, num
 
 
     def fetch(self, start_time, end_time):
@@ -220,12 +224,15 @@ class ClickHouseReader(object):
         path_expr = "Path = '%s'" % self.path
         if agg == 0:
             query = """SELECT Time,Value FROM graphite_d WHERE %s\
-                        AND Time > %d AND Time < %d ORDER BY Time""" % (path_expr, stime, etime) 
+                        AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
+                        Date <= toDate(toDateTime(%d))
+                        ORDER BY Time""" % (path_expr, stime, etime, stime, etime) 
         else:
             query = """SELECT min(Time),avg(Value) FROM graphite_d WHERE %s\
                         AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
+                        AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (path_expr, stime, etime, coeff, coeff) 
+                        ORDER BY kvantT""" % (path_expr, stime, etime, stime, etime, coeff, coeff) 
         return query, coeff
 
     def get_filled_data(self, data, stime, etime, step):
