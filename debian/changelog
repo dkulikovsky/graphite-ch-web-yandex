@@ -1,3 +1,9 @@
+graphite-ch (0.1.5.1) unstable; urgency=low
+
+  * added percona-xtradb-cluster-server-5.6 to deplist
+
+ -- Anna Sysoeva <antrue@yandex-team.ru>  Tue, 09 Dec 2014 19:46:33 +0300
+
 graphite-ch (0.1.5.0) unstable; urgency=low
 
   * fixed perf_bug
