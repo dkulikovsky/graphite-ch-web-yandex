@@ -1,3 +1,9 @@
+graphite-ch (0.1.5.4) unstable; urgency=medium
+
+  * last fix in clickhouse config 
+
+ -- Anna Sysoeva <antrue@yandex-team.ru>  Thu, 11 Dec 2014 22:04:07 +0300
+
 graphite-ch (0.1.5.3) unstable; urgency=medium
 
   * request to metricsearch fix 

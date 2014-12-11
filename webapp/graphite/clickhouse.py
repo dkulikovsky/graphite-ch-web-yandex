@@ -34,7 +34,7 @@ class ClickHouseReader(object):
         self.periods = []
         self.load_storage_schema()
         try:
-            self.storage = getattr(settings, 'CLICKHOUSE_SERVER')
+            self.storage = "".join(getattr(settings, 'CLICKHOUSE_SERVER'))
         except:
             self.storage = "127.0.0.1"
 
