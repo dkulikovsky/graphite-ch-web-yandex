@@ -358,7 +358,7 @@ def mstree_search(q):
             except:
                 backend = "127.0.0.1"
 	    try:
-	        res = requests.get("http://%s:7000/search?query=%s" % (backend, query))
+	        res = requests.get("http://%s:7000/search?query=%s" % ("".join(backend), query))
 	    except Exception, e:
 	        return []
 	    for item in res.text.split("\n"):

@@ -1,3 +1,9 @@
+graphite-ch (0.1.5.3) unstable; urgency=medium
+
+  * request to metricsearch fix 
+
+ -- Anna Sysoeva <antrue@yandex-team.ru>  Thu, 11 Dec 2014 18:17:43 +0300
+
 graphite-ch (0.1.5.2) unstable; urgency=low
 
   * metricsearch on CLICKHOUSE_SERVER in config
