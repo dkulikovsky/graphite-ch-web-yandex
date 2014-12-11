@@ -353,8 +353,12 @@ class ClickHouseFinder(object):
 def mstree_search(q):
     out = []
     for query in conductor_glob(q):
+            try:
+                backend = getattr(settings, 'CLICKHOUSE_SERVER')
+            except:
+                backend = "127.0.0.1"
 	    try:
-	        res = requests.get("http://localhost:7000/search?query=%s" % query)
+	        res = requests.get("http://%s:7000/search?query=%s" % (backend, query))
 	    except Exception, e:
 	        return []
 	    for item in res.text.split("\n"):
