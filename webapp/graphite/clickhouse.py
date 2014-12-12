@@ -354,7 +354,7 @@ def mstree_search(q):
     out = []
     for query in conductor_glob(q):
             try:
-                backend = getattr(settings, 'CLICKHOUSE_SERVER')
+                backend = getattr(settings, 'METRICSEARCH')
             except:
                 backend = "127.0.0.1"
 	    try:
@@ -366,68 +366,3 @@ def mstree_search(q):
 	        out.append(item)
 #    log.info("DEBUG:mstree_search: got %d items from search" % len(out))
     return out
-
-
-def sphinx_query(query):
-    start_star = 0
-    end_star = 0
-    if re.match(r'^\*.*', query):
-        start_star = 1
-    if re.match(r'.*\*$', query):
-        end_star = 1
-    
-    # replace braces with simple wildcard
-    if re.search('{.*}', query):
-        query = re.sub('{.*}', "*", query)
-
-    query_arr = [ q for q in re.split("\?|\*", query) if q ]
-    if len(query_arr) > 2:
-        for i in xrange(1, len(query_arr)-1):
-            query_arr[i] = "*%s*" % query_arr[i]
-
-    if len(query_arr) >= 2:
-        if start_star:
-            query_arr[0] = "*%s*" % query_arr[0]
-        else:
-            query_arr[0] = "%s*" % query_arr[0]
-    
-        if end_star:
-            query_arr[-1] = "*%s*" % query_arr[-1]
-        else:
-            query_arr[-1] = "*%s" % query_arr[-1]
-
-    # this will only work on querys like one_min.bs01g_rt.timings.t9?
-    # querys like one_min.bs0?g_rt.... will be splitted in more than one element in query_arr
-    # all other querys with single word will work fine without any replaces
-    if len(query_arr) == 1:
-        res_query = query.replace("?","*")
-    else:
-        res_query = " ".join(query_arr)
-
-    return res_query
-
-def re_query(query):
-    q = query.replace(".","\.").replace("*",".*").replace("?",".")
-    # if query has braces, replace it with regexp analagoue
-    q = q.replace("{", "(?:").replace("}",")").replace(",","|")
-    return q
-
-def sphinx_search(query):
-    re_q = re.compile(r'^%s$' % re_query(query))
-    sphx_q = sphinx_query(query)
-    client = sphinxapi.SphinxClient()
-    sphinx_server = getattr(settings, 'SPHINX_SERVER')
-    client.SetServer(sphinx_server, 9312)
-    client.SetLimits(0,100000)
-    try:
-        res = client.Query(sphx_q)
-    except Exception, e:
-        return {}
-    output = {}
-    if res['status'] == 0 and res['total_found'] > 0:
-        for item in res['matches']:
-            m = item['attrs']['metric']
-            if re_q.match(m):
-                output[m] = 1
-#    log.info("DEBUG: got %d metrics" % len(output))
-    return output
