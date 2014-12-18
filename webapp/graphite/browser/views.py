@@ -40,7 +40,7 @@ def history(request):
   query = re.sub(r'width=[0-9]+','width=800', query)
   query = re.sub(r'height=[0-9]+','height=350', query)
   for key in view_dict:
-    views.append( (key[0], re.sub(r'from=.*?&',"from=-%s&" % key[1], query), "bsgraphite.yandex.ru") )
+    views.append( (key[0], re.sub(r'from=.*?&',"from=-%s&" % key[1], query)) )
   log.info("DEBUG: views = %s" % views)
   context = {}
   context['views'] = views
@@ -52,13 +52,13 @@ def bsdebug(request):
   views = []
   query = re.sub(r'width=[0-9]+','width=800', query)
   query = re.sub(r'height=[0-9]+','height=350', query)
-  bsgraphite_arr = [ "1-01i", "1-02i", "1-03i", "1-01e", "1-02e", "1-01h", "1-02h", "1-03h" ]
-  for host in bsgraphite_arr:
-    views.append( (host, query, "bsgraphite%s.yandex.ru" % host) )
+  if hasattr(settings, GRAPHITE_HOSTS):
+    for host in settings.GRAPHITE_HOSTS:
+      views.append( (host, query, "%s" % host) )
   context = {}
   context['views'] = views
   context['purpose'] = "debug"
-  return render_to_response("history.html", context)
+  return render_to_response("debug.html", context)
 
 
 def header(request):
