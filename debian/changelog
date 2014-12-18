@@ -1,3 +1,10 @@
+graphite-ch (0.1.5.7) unstable; urgency=low
+
+  * fixed history template, now /render url is relative, 
+  * fixed debug page - now it takes graphite hosts from settings
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 18 Dec 2014 17:38:48 +0300
+
 graphite-ch (0.1.5.6) unstable; urgency=low
 
   * merged with master again 
