@@ -52,7 +52,7 @@ def bsdebug(request):
   views = []
   query = re.sub(r'width=[0-9]+','width=800', query)
   query = re.sub(r'height=[0-9]+','height=350', query)
-  if hasattr(settings, GRAPHITE_HOSTS):
+  if hasattr(settings, 'GRAPHITE_HOSTS'):
     for host in settings.GRAPHITE_HOSTS:
       views.append( (host, query, "%s" % host) )
   context = {}
