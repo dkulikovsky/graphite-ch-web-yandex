@@ -1,3 +1,9 @@
+graphite-ch (0.1.6.0) unstable; urgency=low
+
+  * using gevent for fetching more than one target in graph 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Mon, 22 Dec 2014 15:01:54 +0300
+
 graphite-ch (0.1.5.7) unstable; urgency=low
 
   * fixed history template, now /render url is relative, 

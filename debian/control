@@ -21,6 +21,6 @@ Depends: python-cairo,
  python-httplib2, 
  python-memcached,
  python-django-replicated,
- sphinxapi
+ python-gevent (>=1.0)
 Description: graph system uses clickhouse
  New graph system uses clickhouse

@@ -16,6 +16,12 @@ import math
 import pytz
 from datetime import datetime
 import sys
+import gevent
+
+from gevent import monkey
+# gevent greenlets compat
+monkey.patch_socket()
+
 from time import time, mktime
 from random import shuffle
 from httplib import CannotSendRequest
@@ -132,13 +138,15 @@ def renderView(request):
     if cachedData is not None:
       requestContext['data'] = data = cachedData
     else: # Have to actually retrieve the data now
-      for target in requestOptions['targets']:
-        if not target.strip():
-          continue
-        t = time()
-        seriesList = evaluateTarget(requestContext, target)
-        log.rendering("Retrieval of %s took %.6f" % (target, time() - t))
-        data.extend(seriesList)
+      # best place for multiprocessing
+      log.info("DEBUG:render: targets [ %s ]" % requestOptions['targets']) 
+      start_t = time()
+      ge_jobs = [ gevent.spawn(evaluateTarget, requestContext, target) for target in requestOptions['targets'] if target.strip() ]
+      gevent.wait(ge_jobs)
+      log.rendering("Retrieval took %.6f" % (time() - start_t))
+      log.info("DEBUG:render: retreival using gevent took %.6f" % (time() - start_t))
+      for j in ge_jobs:
+        data.extend(j.value)
 
       if useCache:
         cache.add(dataKey, data, cacheTimeout)
