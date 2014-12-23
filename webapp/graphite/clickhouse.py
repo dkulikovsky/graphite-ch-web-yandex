@@ -19,6 +19,10 @@ except ImportError:
     from graphite.intervals import Interval, IntervalSet
     from graphite.node import LeafNode, BranchNode
 
+class tmp_node_obj():
+    def __init__(self, path):
+        self.path = path
+
 class ClickHouseReader(object):
     __slots__ = ('path','schema', 'periods', 'multi', 'pathExpr', 'storage')
 
@@ -83,9 +87,6 @@ class ClickHouseReader(object):
             filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
             start_t = time.time()
             sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
-            class tmp_node_obj():
-                def __init__(self, path):
-                    self.path = path
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
             sorted_t += time.time() - start_t
 #        log.info("DEBUG:OPT: sorted in %.3f" % sorted_t)

@@ -1,3 +1,9 @@
+graphite-ch (0.1.7.1) unstable; urgency=low
+
+  * fixed tmp_node_obj bug 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 23 Dec 2014 18:25:29 +0300
+
 graphite-ch (0.1.7.0) unstable; urgency=low
 
   * added internal data caching 
