@@ -20,6 +20,7 @@ Depends: python-cairo,
  python-django-yauth, 
  python-httplib2, 
  python-memcached,
+ python-pylibmc,
  python-django-replicated,
  python-gevent (>=1.0)
 Description: graph system uses clickhouse

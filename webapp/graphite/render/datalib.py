@@ -20,6 +20,8 @@ from graphite.storage import STORE
 from graphite.readers import FetchInProgress
 from django.conf import settings
 from graphite.clickhouse import ClickHouseReader
+from django.core.cache import cache
+from hashlib import md5
 
 class TimeSeries(list):
   def __init__(self, name, start, end, step, values, consolidate='average'):
@@ -100,7 +102,13 @@ def fetchData(requestContext, pathExpr):
     matching_nodes = STORE.find(pathExpr, startTime, endTime, local=requestContext['localOnly'])
     matching_nodes = list(matching_nodes)
     if len(matching_nodes) > 1:
-        fetches = ClickHouseReader(pathExpr, multi=1).multi_fetch(startTime, endTime)
+        request_hash = md5("%s_%s_%s" % (pathExpr, startTime, endTime)).hexdigest()
+        cached_result = cache.get(request_hash)
+        if cached_result:
+            fetches = cached_result
+        else:
+            fetches = ClickHouseReader(pathExpr, multi=1).multi_fetch(startTime, endTime)
+            cache.set(request_hash, fetches)
     elif len(matching_nodes) == 1:
         fetches = [(matching_nodes[0], matching_nodes[0].fetch(startTime, endTime))]
     else:
