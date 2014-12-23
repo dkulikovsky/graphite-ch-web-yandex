@@ -105,10 +105,12 @@ def fetchData(requestContext, pathExpr):
         request_hash = md5("%s_%s_%s" % (pathExpr, startTime, endTime)).hexdigest()
         cached_result = cache.get(request_hash)
         if cached_result:
+	    log.info("DEBUG:fetchData: got result from cache for %s_%s_%s" % (pathExpr, startTime, endTime))
             fetches = cached_result
         else:
+	    log.info("DEBUG:fetchData: no cache for %s_%s_%s" % (pathExpr, startTime, endTime))
             fetches = ClickHouseReader(pathExpr, multi=1).multi_fetch(startTime, endTime)
-            cache.set(request_hash, fetches)
+            cache.add(request_hash, fetches)
     elif len(matching_nodes) == 1:
         fetches = [(matching_nodes[0], matching_nodes[0].fetch(startTime, endTime))]
     else:

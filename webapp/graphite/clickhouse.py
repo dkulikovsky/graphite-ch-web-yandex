@@ -81,23 +81,20 @@ class ClickHouseReader(object):
         result = []
         start_t = time.time()
         time_info = start_time, end_time, time_step
-        sorted_t = 0
         for path in data.keys():
             # fill output with nans when there is no datapoints
             filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
-            start_t = time.time()
             sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
-            sorted_t += time.time() - start_t
-#        log.info("DEBUG:OPT: sorted in %.3f" % sorted_t)
-        log.info("RENDER:multi_fetch: in %.3f" % (time.time() - start_t_g))
+        log.info("DEBUG:multi_fetch: all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
+		 ((time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
         return result
 
     def get_multi_data(self, start_time, end_time):
         query, time_step, num = self.gen_multi_query(start_time, end_time)
         data = {}
         # query_hash now have only one storage beceause clickhouse has distributed table engine
-        log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
+#        log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
         start_t = time.time()
         start_t_g = time.time()
 
