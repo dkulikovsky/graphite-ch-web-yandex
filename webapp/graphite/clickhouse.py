@@ -3,7 +3,6 @@ import itertools
 import time
 import string
 import re
-import sphinxapi
 import ConfigParser
 from pprint import pprint
 from graphite.logger import log
