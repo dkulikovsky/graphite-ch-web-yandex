@@ -93,7 +93,7 @@ class ClickHouseReader(object):
         query, time_step, num = self.gen_multi_query(start_time, end_time)
         data = {}
         # query_hash now have only one storage beceause clickhouse has distributed table engine
-#        log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
+        log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
         start_t = time.time()
         start_t_g = time.time()
 
@@ -142,7 +142,7 @@ class ClickHouseReader(object):
                         Date <= toDate(toDateTime(%d))
                         ORDER BY Time, Timestamp""" % (path_expr, stime, etime, stime, etime) 
         else:
-            sub_query = """SELECT Path, Time, argMax(Value, Timestamp) as Value
+            sub_query = """SELECT Path, Time, Date, argMax(Value, Timestamp) as Value
                         FROM graphite_d WHERE %s
                         AND Time > %d AND Time < %d 
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
@@ -160,7 +160,7 @@ class ClickHouseReader(object):
         start_t_g = time.time()
         params_hash = {}
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
-#        log.info("DEBUG:SINGLE: got query %s and time_step %d" % (params_hash['query'], time_step))
+        log.info("DEBUG:SINGLE: got query %s and time_step %d" % (params_hash['query'], time_step))
         url = "http://%s:8123" % self.storage
         dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
@@ -231,7 +231,7 @@ class ClickHouseReader(object):
                         Date <= toDate(toDateTime(%d))
                         ORDER BY Time, Timestamp""" % (path_expr, stime, etime, stime, etime) 
         else:
-            sub_query = """SELECT Time, argMax(Value, Timestamp) FROM graphite_d WHERE %s
+            sub_query = """SELECT Path,Time,Date,argMax(Value, Timestamp) as Value FROM graphite_d WHERE %s
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
                         Date <= toDate(toDateTime(%d)) GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
             query = """SELECT min(Time),avg(Value) FROM (%s) WHERE %s\
