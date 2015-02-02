@@ -137,16 +137,22 @@ class ClickHouseReader(object):
         path_expr = "Path IN ( %s )" % ", ".join(metrics)
         num = len(metrics)
         if agg == 0:
-            query = """SELECT Path, Time,Value FROM graphite_d WHERE %s\
+            query = """SELECT Path, Time, Value FROM graphite_d WHERE %s\
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
                         Date <= toDate(toDateTime(%d))
-                        ORDER BY Time""" % (path_expr, stime, etime, stime, etime) 
+                        ORDER BY Time, Timestamp""" % (path_expr, stime, etime, stime, etime) 
         else:
-            query = """SELECT min(Path), min(Time),avg(Value) FROM graphite_d WHERE %s\
+            sub_query = """SELECT Path, Time, argMax(Value, Timestamp) as Value
+                        FROM graphite_d WHERE %s
+                        AND Time > %d AND Time < %d 
+                        AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
+                        GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
+            query = """SELECT anyLast(Path), min(Time),avg(Value) FROM (%s)
+                        WHERE %s\
                         AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d 
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (path_expr, stime, etime, stime, etime, coeff, coeff) 
+                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, coeff, coeff) 
         return query, coeff, num
 
 
@@ -223,13 +229,16 @@ class ClickHouseReader(object):
             query = """SELECT Time,Value FROM graphite_d WHERE %s\
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
                         Date <= toDate(toDateTime(%d))
-                        ORDER BY Time""" % (path_expr, stime, etime, stime, etime) 
+                        ORDER BY Time, Timestamp""" % (path_expr, stime, etime, stime, etime) 
         else:
-            query = """SELECT min(Time),avg(Value) FROM graphite_d WHERE %s\
+            sub_query = """SELECT Time, argMax(Value, Timestamp) FROM graphite_d WHERE %s
+                        AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
+                        Date <= toDate(toDateTime(%d)) GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
+            query = """SELECT min(Time),avg(Value) FROM (%s) WHERE %s\
                         AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (path_expr, stime, etime, stime, etime, coeff, coeff) 
+                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, coeff, coeff) 
         return query, coeff
 
     def get_filled_data(self, data, stime, etime, step):
