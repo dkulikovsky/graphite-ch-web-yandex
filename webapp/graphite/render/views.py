@@ -89,10 +89,11 @@ def renderView(request):
 
   # First we check the request cache
   requestKey = hashRequest(cache_request_obj)
+  requestContext['request_key'] = requestKey
   cachedResponse = cache.get(requestKey)
   if cachedResponse:
     log.cache('Request-Cache hit [%s]' % requestKey)
-    log.rendering('Returned cached response in %.6f' % (time() - start))
+    log.rendering('[%s] Returned cached response in %.6f' % (requestKey, (time() - start)))
     return cachedResponse
   else:
     log.cache('Request-Cache miss [%s]' % requestKey)
@@ -131,9 +132,10 @@ def renderView(request):
 
     if cachedData is not None:
       requestContext['data'] = data = cachedData
+      log.rendering("[%s] got data cache Retrieval" % requestKey)
     else: # Have to actually retrieve the data now
       # best place for multiprocessing
-      log.info("DEBUG:render: targets [ %s ]" % requestOptions['targets']) 
+      log.info("DEBUG:render:[%s] targets [ %s ]" % (requestKey, requestOptions['targets']))
       start_t = time()
       for target in requestOptions['targets']:
           if not target.strip():
@@ -141,8 +143,8 @@ def renderView(request):
           t = time()
           seriesList = evaluateTarget(requestContext, target)
           data.extend(seriesList)
-      log.rendering("Retrieval took %.6f" % (time() - start_t))
-      log.info("DEBUG:render: retreival using gevent took %.6f" % (time() - start_t))
+      log.rendering("[%s] Retrieval took %.6f" % (requestKey, (time() - start_t)))
+      log.info("DEBUG:render:[%s] retreival using gevent took %.6f" % (requestKey, (time() - start_t)))
 
       if useCache:
         cache.add(dataKey, data, cacheTimeout)
@@ -242,7 +244,7 @@ def renderView(request):
   if useCache:
     cache.set(requestKey, response, cacheTimeout)
 
-  log.rendering('Total rendering time %.6f seconds' % (time() - start))
+  log.rendering('[%s] Total rendering time %.6f seconds' % (requestKey, (time() - start)))
   return response
 
 

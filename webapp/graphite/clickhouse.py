@@ -23,9 +23,9 @@ class tmp_node_obj():
         self.path = path
 
 class ClickHouseReader(object):
-    __slots__ = ('path','schema', 'periods', 'multi', 'pathExpr', 'storage')
+    __slots__ = ('path','schema', 'periods', 'multi', 'pathExpr', 'storage', 'request_key')
 
-    def __init__(self, path, storage="", multi=0):
+    def __init__(self, path, storage="", multi=0, reqkey=""):
         self.storage = storage
         if multi:
             self.multi = 1
@@ -36,6 +36,7 @@ class ClickHouseReader(object):
         self.schema = {}
         self.periods = []
         self.load_storage_schema()
+	self.request_key = reqkey
         try:
             self.storage = "".join(getattr(settings, 'CLICKHOUSE_SERVER'))
         except:
@@ -85,22 +86,20 @@ class ClickHouseReader(object):
             filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
             sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
-        log.info("DEBUG:multi_fetch: all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
-		 ((time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
+        log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
+		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
         return result
 
     def get_multi_data(self, start_time, end_time):
         query, time_step, num = self.gen_multi_query(start_time, end_time)
-        data = {}
         # query_hash now have only one storage beceause clickhouse has distributed table engine
-        log.info("DEBUG:MULTI: got storage %s, query %s and time_step %d" % (self.storage, query, time_step))
+        log.info("DEBUG:MULTI:[%s] got storage %s, query [ %s ] and time_step %d" % (self.request_key, self.storage, query, time_step))
         start_t = time.time()
-        start_t_g = time.time()
 
         url = "http://%s:8123" % self.storage
+        data = {}
         dps = requests.post(url, query).text
 #        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
-        fetch_time = time.time() - start_t
         start_t = time.time()
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
@@ -118,10 +117,11 @@ class ClickHouseReader(object):
             dp_ts = arr[1].strip()
             dp_val = arr[2].strip()
             data.setdefault(path, {})[dp_ts] = float(dp_val)
+        fetch_time += time.time() - start_t
 #        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
 #        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
         #log.info("DEBUG: data = \n %s \n" % data)
-        log.info("DEBUG:get_multi_data: fetch = %s, parse = %s, path = %s, num = %s" % (fetch_time, time.time() - start_t, self.path, num))
+        log.info("DEBUG:get_multi_data:[%s] fetch = %s, parse = %s, path = %s, num = %s" % (self.request_key, fetch_time, time.time() - start_t, self.path, num))
         return data, time_step
 
 
@@ -134,8 +134,8 @@ class ClickHouseReader(object):
                 metrics.append("'%s'" % m.strip())
         
         query = ""
-        path_expr = "Path IN ( %s )" % ", ".join(metrics)
         num = len(metrics)
+        path_expr = "Path IN ( %s )" % ", ".join(metrics)
         if agg == 0:
             query = """SELECT Path, Time, Value FROM graphite_d WHERE %s\
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
@@ -160,7 +160,7 @@ class ClickHouseReader(object):
         start_t_g = time.time()
         params_hash = {}
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
-        log.info("DEBUG:SINGLE: got query %s and time_step %d" % (params_hash['query'], time_step))
+        log.info("DEBUG:SINGLE:[%s] got query %s and time_step %d" % (self.request_key, params_hash['query'], time_step))
         url = "http://%s:8123" % self.storage
         dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
@@ -184,7 +184,7 @@ class ClickHouseReader(object):
         # sort data
         sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
         time_info = start_time, end_time, time_step
-        log.info("RENDER:fetch: in %.3f" % (time.time() - start_t_g))
+        log.info("RENDER:fetch:[%s] in %.3f" % (self.request_key, (time.time() - start_t_g)))
         return time_info, sorted_data
 
     def get_coeff(self, stime, etime):
@@ -346,14 +346,14 @@ def conductor_glob(pattern):
   return braces_glob('.'.join(parts))
 
 class ClickHouseFinder(object):
-    def find_nodes(self, query):
+    def find_nodes(self, query, request_key):
         q = query.pattern
         metrics = mstree_search(q)
         for v in metrics:
             if v[-1] == ".":
                 yield BranchNode(v[:-1])
             else:
-                yield LeafNode(v,ClickHouseReader(v))
+                yield LeafNode(v,ClickHouseReader(v, reqkey=request_key))
 
 
 def mstree_search(q):
