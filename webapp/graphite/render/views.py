@@ -90,6 +90,8 @@ def renderView(request):
   # First we check the request cache
   requestKey = hashRequest(cache_request_obj)
   requestContext['request_key'] = requestKey
+  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t\"%s\"\t%s" %\
+          (requestKey, request.META['REMOTE_ADDR'], request.META['HTTP_REFERER'], request.META['HTTP_USER_AGENT'], request.META['REQUEST_METHOD']))
   cachedResponse = cache.get(requestKey)
   if cachedResponse:
     log.cache('Request-Cache hit [%s]' % requestKey)
