@@ -1,3 +1,9 @@
+graphite-ch (0.1.9.1) unstable; urgency=low
+
+  * added request keys 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 12 Feb 2015 23:06:56 +0300
+
 graphite-ch (0.1.9.0) unstable; urgency=low
 
   * optimization for multi queries 
