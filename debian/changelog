@@ -1,3 +1,9 @@
+graphite-ch (0.1.9.0) unstable; urgency=low
+
+  * optimization for multi queries 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Wed, 11 Feb 2015 16:49:50 +0300
+
 graphite-ch (0.1.8.1) unstable; urgency=low
 
   * fixed sql 

@@ -37,7 +37,8 @@ class GraphiteLogger:
     self.metricAccessLogger = logging.getLogger("metric_access")
     #Setup formatter & handlers
     self.formatter = logging.Formatter("%(asctime)s :: %(message)s","%a %b %d %H:%M:%S %Y")
-    self.infoHandler = Rotater(self.infoLogFile,when="midnight",backupCount=1)
+#    self.infoHandler = Rotater(self.infoLogFile,when="midnight",backupCount=1)
+    self.infoHandler = logging.StreamHandler()
     self.infoHandler.setFormatter(self.formatter)
     self.infoLogger.addHandler(self.infoHandler)
     self.exceptionHandler = Rotater(self.exceptionLogFile,when="midnight",backupCount=1)

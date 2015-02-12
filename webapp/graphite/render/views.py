@@ -88,15 +88,14 @@ def renderView(request):
   cache_request_obj.appendlist("template", graphOptions['defaultTemplate'])
 
   # First we check the request cache
-  if useCache:
-    requestKey = hashRequest(cache_request_obj)
-    cachedResponse = cache.get(requestKey)
-    if cachedResponse:
-      log.cache('Request-Cache hit [%s]' % requestKey)
-      log.rendering('Returned cached response in %.6f' % (time() - start))
-      return cachedResponse
-    else:
-      log.cache('Request-Cache miss [%s]' % requestKey)
+  requestKey = hashRequest(cache_request_obj)
+  cachedResponse = cache.get(requestKey)
+  if cachedResponse:
+    log.cache('Request-Cache hit [%s]' % requestKey)
+    log.rendering('Returned cached response in %.6f' % (time() - start))
+    return cachedResponse
+  else:
+    log.cache('Request-Cache miss [%s]' % requestKey)
 
   # Now we prepare the requested data
   if requestOptions['graphType'] == 'pie':
