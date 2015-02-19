@@ -29,6 +29,18 @@ def hashRequest(request):
 
   return compactHash(myHash)
 
+def hashRequestWTime(request):
+  # Normalize the request parameters so ensure we're deterministic
+  queryParams = ["%s=%s" % (key, '&'.join(values))
+                 for (key,values) in request.lists()
+                 if not key.startswith('_')]
+
+  normalizedParams = ','.join( sorted(queryParams) ) or 'noParam'
+  myHash = normalizedParams + '@' + time.strftime("%Y%m%d_%T", time.localtime())
+  myHash = stripControlChars(myHash)
+
+  return compactHash(myHash)
+
 
 def hashData(targets, startTime, endTime):
   targetsString = ','.join(targets)

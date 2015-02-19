@@ -41,7 +41,7 @@ from graphite.logger import log
 from graphite.render.evaluator import evaluateTarget
 from graphite.render.attime import parseATTime
 from graphite.render.functions import PieFunctions
-from graphite.render.hashing import hashRequest, hashData
+from graphite.render.hashing import hashRequest, hashData, hashRequestWTime
 from graphite.render.glyph import GraphTypes
 
 from django.http import HttpResponse, HttpResponseServerError, HttpResponseRedirect
@@ -89,16 +89,22 @@ def renderView(request):
 
   # First we check the request cache
   requestKey = hashRequest(cache_request_obj)
-  requestContext['request_key'] = requestKey
-  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t\"%s\"\t%s" %\
-          (requestKey, request.META['REMOTE_ADDR'], request.META['HTTP_REFERER'], request.META['HTTP_USER_AGENT'], request.META['REQUEST_METHOD']))
+  requestHash = hashRequestWTime(cache_request_obj)
+  requestContext['request_key'] = requestHash
+  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t%s\t%s\t\"%s\"" %\
+          (requestHash,\
+            request.META['REMOTE_ADDR'],\
+            request.META['REQUEST_METHOD'],\
+            request.META['QUERY_STRING'],\
+            request.META['HTTP_REFERER'],\
+            request.META['HTTP_USER_AGENT']))
   cachedResponse = cache.get(requestKey)
   if cachedResponse:
-    log.cache('Request-Cache hit [%s]' % requestKey)
-    log.rendering('[%s] Returned cached response in %.6f' % (requestKey, (time() - start)))
+    log.cache('Request-Cache hit [%s]' % requestHash)
+    log.rendering('[%s] Returned cached response in %.6f' % (requestHash, (time() - start)))
     return cachedResponse
   else:
-    log.cache('Request-Cache miss [%s]' % requestKey)
+    log.cache('Request-Cache miss [%s]' % requestHash)
 
   # Now we prepare the requested data
   if requestOptions['graphType'] == 'pie':
@@ -134,10 +140,10 @@ def renderView(request):
 
     if cachedData is not None:
       requestContext['data'] = data = cachedData
-      log.rendering("[%s] got data cache Retrieval" % requestKey)
+      log.rendering("[%s] got data cache Retrieval" % requestHash)
     else: # Have to actually retrieve the data now
       # best place for multiprocessing
-      log.info("DEBUG:render:[%s] targets [ %s ]" % (requestKey, requestOptions['targets']))
+      log.info("DEBUG:render:[%s] targets [ %s ]" % (requestHash, requestOptions['targets']))
       start_t = time()
       for target in requestOptions['targets']:
           if not target.strip():
@@ -145,8 +151,8 @@ def renderView(request):
           t = time()
           seriesList = evaluateTarget(requestContext, target)
           data.extend(seriesList)
-      log.rendering("[%s] Retrieval took %.6f" % (requestKey, (time() - start_t)))
-      log.info("DEBUG:render:[%s] retreival using gevent took %.6f" % (requestKey, (time() - start_t)))
+      log.rendering("[%s] Retrieval took %.6f" % (requestHash, (time() - start_t)))
+      log.info("DEBUG:render:[%s] retreival using gevent took %.6f" % (requestHash, (time() - start_t)))
 
       if useCache:
         cache.add(dataKey, data, cacheTimeout)
@@ -246,7 +252,7 @@ def renderView(request):
   if useCache:
     cache.set(requestKey, response, cacheTimeout)
 
-  log.rendering('[%s] Total rendering time %.6f seconds' % (requestKey, (time() - start)))
+  log.rendering('[%s] Total rendering time %.6f seconds' % (requestHash, (time() - start)))
   return response
 
 

@@ -117,7 +117,7 @@ class ClickHouseReader(object):
             dp_ts = arr[1].strip()
             dp_val = arr[2].strip()
             data.setdefault(path, {})[dp_ts] = float(dp_val)
-        fetch_time += time.time() - start_t
+        fetch_time = time.time() - start_t
 #        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
 #        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
         #log.info("DEBUG: data = \n %s \n" % data)
