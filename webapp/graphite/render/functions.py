@@ -1853,6 +1853,18 @@ def sortByName(requestContext, seriesList):
   seriesList.sort(compare)
   return seriesList
 
+def sortByNameR(requestContext, seriesList):
+  """
+  Takes one metric or a wildcard seriesList.
+
+  Sorts the list of metrics by the metric name.
+  """
+  def compare(x,y):
+    return cmp(x.name, y.name)
+
+  seriesList.sort(compare)
+  return seriesList
+
 def sortByTotal(requestContext, seriesList):
   """
   Takes one metric or a wildcard seriesList.
@@ -3284,6 +3296,7 @@ SeriesFunctions = {
   'sortByMaxima' : sortByMaxima,
   'sortByMinima' : sortByMinima,
   'sortByName'  : sortByName,
+  'sortByNameR'  : sortByNameR,
   'useSeriesAbove': useSeriesAbove,
   'exclude' : exclude,
 
