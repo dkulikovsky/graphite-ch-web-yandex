@@ -1860,7 +1860,7 @@ def sortByNameR(requestContext, seriesList):
   Sorts the list of metrics by the metric name.
   """
   def compare(x,y):
-    return cmp(x.name, y.name)
+    return cmp(y.name, x.name)
 
   seriesList.sort(compare)
   return seriesList
