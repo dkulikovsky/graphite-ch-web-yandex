@@ -1,3 +1,9 @@
+graphite-ch (0.1.9.2) unstable; urgency=low
+
+  * added sortByNameR reversed 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 20 Feb 2015 16:06:18 +0300
+
 graphite-ch (0.1.9.1) unstable; urgency=low
 
   * added request keys 
