@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License."""
 
 import traceback
+import re
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.conf import settings
 from graphite.account.models import Profile
@@ -21,6 +22,7 @@ from graphite.logger import log
 from graphite.storage import STORE
 from graphite.metrics.search import searcher
 from graphite.carbonlink import CarbonLink
+from graphite.conductor import Conductor
 import fnmatch, os
 
 try:
@@ -187,6 +189,21 @@ def expand_view(request):
   }
 
   response = json_response_for(request, result)
+  response['Pragma'] = 'no-cache'
+  response['Cache-Control'] = 'no-cache'
+  return response
+
+def expand_conductor_view(request):
+  re_braces = re.compile(r'({[^{},]*,[^{}]*})')
+  re_conductor = re.compile(r'(^%[\w@-]+)$')
+  conductor = Conductor()
+
+  results = {}
+  for query in request.REQUEST.getlist('query'):
+    if not re_conductor.match(query): continue
+    results[query] = conductor.expandExpressionFull(query)
+    
+  response = json_response_for(request, results)
   response['Pragma'] = 'no-cache'
   response['Cache-Control'] = 'no-cache'
   return response

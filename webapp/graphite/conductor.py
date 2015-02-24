@@ -40,3 +40,29 @@ class Conductor():
       if result:
         self.mc.set(expr.encode('utf-8'),result,time=Conductor.EXPIRES_IN)
     return result
+
+  def expandExpressionFull(self, expr, cached=True):
+    result = self.mc.get(expr.encode('utf-8'))
+    if cached and result:
+      return result
+    else:
+      try: 
+        return self.__expandExpressionFullNonCached(expr)
+      except:
+        return []
+      
+  def __expandExpressionFullNonCached(self, expr):
+    match = Conductor.CONDUCTOR_EXPR_RE.search(expr)
+    if not match:
+      raise ValueError('Not supported conductor expression: %s' % expr)
+    (group,_,dc) = match.groups()
+    response, content = self.__http.request(self.url + "/groups2hosts/" + group + "?format=json&fields=fqdn,datacenter_name,root_datacenter_name", "GET")
+    result = []
+    if response['status'] == '200':
+      data = json.loads(content)
+      for host in data:
+        if dc and not dc in (host['datacenter_name'], host['root_datacenter_name']): continue
+        result.append(host)
+      if result:
+        self.mc.set(expr.encode('utf-8'),result,time=Conductor.EXPIRES_IN)
+    return result
