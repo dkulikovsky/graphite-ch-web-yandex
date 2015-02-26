@@ -8,6 +8,7 @@ PYTHONPATH="/var/lib/graphite/webapp"
 DARGS="$GRAPHITE_MANAGE_SCRIPT runfcgi --pythonpath=$PYTHONPATH --settings=graphite.settings method=prefork host=127.0.0.1 port=6031 pidfile=$PID_FILE workdir=$GRAPHITE_ROOT/webapp outlog=/var/log/graphite/graphite_out.log errlog=/var/log/graphite/graphite_err.log maxrequests=0 maxchildren=24 minspare=24 maxspare=24"
 NAME=graphite-web
 DESC="graphite web interface"
+GRAPHITE_LOG_DIR="/var/log/graphite"
 
 
 test -e $GRAPHITE_MANAGE_SCRIPT || exit 0
@@ -16,6 +17,10 @@ set -e
 
 case "$1" in
   start)
+    if [ ! -d $GRAPHITE_LOG_DIR ]; then
+        mkdir -p $GRAPHITE_LOG_DIR 
+        chown www-data:www-data $GRAPHITE_LOG_DIR 
+    fi
 	echo -n "Starting $DESC: "
 	start-stop-daemon --start -u www-data --pidfile $PID_FILE --exec $DAEMON -- $DARGS
 	echo "$NAME."
