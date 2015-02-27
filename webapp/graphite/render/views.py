@@ -91,12 +91,17 @@ def renderView(request):
   requestKey = hashRequest(cache_request_obj)
   requestHash = hashRequestWTime(cache_request_obj)
   requestContext['request_key'] = requestHash
-  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t%s\t\"%s\"" %\
+  post_data = ""
+  if request.method == "POST":
+    for k,v in request.POST.items():
+        post_data  += "%s=%s&" % (k,v)
+  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t%s\t\"%s\" body:\"%s\"" %\
           (requestHash,\
             request.META['REMOTE_ADDR'],\
             request.META['REQUEST_METHOD'],\
             request.META['QUERY_STRING'],\
-            request.META['HTTP_USER_AGENT']))
+            request.META['HTTP_USER_AGENT'],
+            post_data))
   cachedResponse = cache.get(requestKey)
   if cachedResponse:
     log.cache('Request-Cache hit [%s]' % requestHash)
