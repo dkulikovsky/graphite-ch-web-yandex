@@ -1,3 +1,9 @@
+graphite-ch (0.1.9.7) unstable; urgency=low
+
+  * fixed request_body typo 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Mon, 02 Mar 2015 18:29:02 +0300
+
 graphite-ch (0.1.9.6) unstable; urgency=low
 
   * moved request body to the right place

@@ -91,7 +91,7 @@ def renderView(request):
   requestKey = hashRequest(cache_request_obj)
   requestHash = hashRequestWTime(cache_request_obj)
   requestContext['request_key'] = requestHash
-  post_data = ""
+  request_data = ""
   if request.method == "POST":
     for k,v in request.POST.items():
         request_data += "%s=%s&" % (k,v)
