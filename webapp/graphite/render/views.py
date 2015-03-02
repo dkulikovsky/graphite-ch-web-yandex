@@ -103,13 +103,14 @@ def renderView(request):
             request.META['REQUEST_METHOD'],\
             request_data,\
             request.META['HTTP_USER_AGENT']))
-  cachedResponse = cache.get(requestKey)
-  if cachedResponse:
-    log.cache('Request-Cache hit [%s]' % requestHash)
-    log.rendering('[%s] Returned cached response in %.6f' % (requestHash, (time() - start)))
-    return cachedResponse
-  else:
-    log.cache('Request-Cache miss [%s]' % requestHash)
+  if useCache:
+    cachedResponse = cache.get(requestKey)
+    if cachedResponse:
+      log.cache('Request-Cache hit [%s]' % requestHash)
+      log.rendering('[%s] Returned cached response in %.6f' % (requestHash, (time() - start)))
+      return cachedResponse
+    else:
+      log.cache('Request-Cache miss [%s]' % requestHash)
 
   # Now we prepare the requested data
   if requestOptions['graphType'] == 'pie':
