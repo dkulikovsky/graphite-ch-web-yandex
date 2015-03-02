@@ -11,6 +11,7 @@ from graphite.util import json, getProfile, getProfileByUsername
 from graphite.render.views import parseOptions
 from graphite.render.evaluator import evaluateTarget
 from graphite.storage import STORE
+from graphite.render.hashing import hashRequestWTime
 
 
 def graphlot_render(request):
@@ -42,6 +43,15 @@ def get_data(request):
         'localOnly' : False,
         'data' : []
     }
+
+    if request.method == 'GET':
+      cache_request_obj = request.GET.copy()
+    else:
+      cache_request_obj = request.POST.copy()
+     # First we check the request cache
+    requestHash = hashRequestWTime(cache_request_obj)
+    requestContext['request_key'] = requestHash
+ 
     target = requestOptions['targets'][0]
     seriesList = evaluateTarget(requestContext, target)
     result = [ dict(
