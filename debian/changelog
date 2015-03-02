@@ -1,3 +1,16 @@
+graphite-ch (0.1.9.6) unstable; urgency=low
+
+  * moved request body to the right place
+  * added start_time and end_time to log 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Mon, 02 Mar 2015 16:24:45 +0300
+
+graphite-ch (0.1.9.5) unstable; urgency=low
+
+  * added request body to log 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 27 Feb 2015 14:30:38 +0300
+
 graphite-ch (0.1.9.4) unstable; urgency=low
 
   * added log dir creation in init script 

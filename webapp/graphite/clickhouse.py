@@ -74,6 +74,7 @@ class ClickHouseReader(object):
 
     def multi_fetch(self, start_time, end_time):
         start_t_g = time.time()
+        log.info("DEBUG:start_end_time:[%s]\t%s\t%s" % (self.request_key, start_time, end_time))
         # fix path, convert it to query appliable to db
         self.path = FindQuery(self.pathExpr, start_time, end_time).pattern
         data, time_step = self.get_multi_data(start_time, end_time)
@@ -158,6 +159,7 @@ class ClickHouseReader(object):
 
     def fetch(self, start_time, end_time):
         start_t_g = time.time()
+        log.info("DEBUG:start_end_time:[%s] \t%s\t%s" % (self.request_key, start_time, end_time))
         params_hash = {}
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
         log.info("DEBUG:SINGLE:[%s] got query %s and time_step %d" % (self.request_key, params_hash['query'], time_step))

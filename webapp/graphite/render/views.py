@@ -94,14 +94,15 @@ def renderView(request):
   post_data = ""
   if request.method == "POST":
     for k,v in request.POST.items():
-        post_data  += "%s=%s&" % (k,v)
-  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t%s\t\"%s\" body:\"%s\"" %\
+        request_data += "%s=%s&" % (k,v)
+  else:
+    request_data = request.META['QUERY_STRING']
+  log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t%s\t\"%s\"" %\
           (requestHash,\
             request.META['REMOTE_ADDR'],\
             request.META['REQUEST_METHOD'],\
-            request.META['QUERY_STRING'],\
-            request.META['HTTP_USER_AGENT'],
-            post_data))
+            request_data,\
+            request.META['HTTP_USER_AGENT']))
   cachedResponse = cache.get(requestKey)
   if cachedResponse:
     log.cache('Request-Cache hit [%s]' % requestHash)
