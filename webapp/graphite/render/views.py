@@ -94,7 +94,7 @@ def renderView(request):
   request_data = ""
   if request.method == "POST":
     for k,v in request.POST.items():
-        request_data += "%s=%s&" % (k,v)
+        request_data += "%s=%s&" % (k.replace("\t",""),v.replace("\t",""))
   else:
     request_data = request.META['QUERY_STRING']
   log.info("DEBUG:Request_meta:[%s]\t%s\t%s\t%s\t\"%s\"" %\

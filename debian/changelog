@@ -1,3 +1,9 @@
+graphite-ch (0.1.10.1) unstable; urgency=low
+
+  * fixed post body output 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 17 Mar 2015 19:10:08 +0300
+
 graphite-ch (0.1.10.0) unstable; urgency=low
 
   * fixed graphlot 
