@@ -1,3 +1,9 @@
+graphite-ch (0.1.10.2) unstable; urgency=low
+
+  * fixed cache for conductor api
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 19 Mar 2015 15:44:33 +0300
+
 graphite-ch (0.1.10.1) unstable; urgency=low
 
   * fixed post body output 

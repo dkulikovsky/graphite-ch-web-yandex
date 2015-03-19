@@ -42,7 +42,7 @@ class Conductor():
     return result
 
   def expandExpressionFull(self, expr, cached=True):
-    result = self.mc.get(expr.encode('utf-8'))
+    result = self.mc.get("%s_full" % expr.encode('utf-8'))
     if cached and result:
       return result
     else:
@@ -64,5 +64,5 @@ class Conductor():
         if dc and not dc in (host['datacenter_name'], host['root_datacenter_name']): continue
         result.append(host)
       if result:
-        self.mc.set(expr.encode('utf-8'),result,time=Conductor.EXPIRES_IN)
+        self.mc.set("%s_full" % expr.encode('utf-8'),result,time=Conductor.EXPIRES_IN)
     return result
