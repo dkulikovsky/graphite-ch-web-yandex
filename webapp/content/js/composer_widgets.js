@@ -1145,7 +1145,9 @@ function createFunctionsMenu() {
            {text: "Max", handler: applyFuncToEach('aggregateLine', '"max"')},
            {text: "Min", handler: applyFuncToEach('aggregateLine', '"min"')}
          ]
-        }
+        },
+       {text: 'Map Series', handler: applyFuncToEachWithInput('mapSeries', 'Enter map node number')},
+       {text: 'Reduce Series', handler: applyFuncToEachWithInput('reduceSeries', 'Enter reduce function, reduce node number, reduce matchers')}
       ]
     }
   ];

@@ -1,3 +1,9 @@
+graphite-ch (0.1.10.4) unstable; urgency=medium
+
+  * add buttons 
+
+ -- Anna Sysoeva <antrue@yandex-team.ru>  Fri, 10 Apr 2015 19:53:04 +0300
+
 graphite-ch (0.1.10.3) unstable; urgency=medium
 
   * added map, reduce render functions 

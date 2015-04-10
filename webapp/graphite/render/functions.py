@@ -3273,8 +3273,6 @@ SeriesFunctions = {
   'diffSeries' : diffSeries,
   'divideSeries' : divideSeries,
   'yabsStatLag' : yabsStatLag,
-  'mapSeries' : mapSeries,
-  'reduceSeries' : reduceSeries,
 
   # Series Filter functions
   'mostDeviant' : mostDeviant,
@@ -3338,6 +3336,8 @@ SeriesFunctions = {
   'identity': identity,
   'discreteSticking': discreteSticking,
   'aggregateLine' : aggregateLine,
+  'mapSeries' : mapSeries,
+  'reduceSeries' : reduceSeries,
 
   # test functions
   'time': timeFunction,
