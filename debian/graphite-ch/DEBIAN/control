@@ -1,0 +1,11 @@
+Package: graphite-ch
+Version: 0.1.5.4
+Architecture: all
+Maintainer: Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>
+Installed-Size: 5238
+Depends: python-cairo, yabs-ceres, python-tz, python-pyparsing, python-django-1.4 | python-django (>= 1.4) | python-django-1.6, python-django-tagging, python-mysqldb, mysql-server | virtual-mysql-server | percona-xtradb-cluster-server-5.6, python-flup, python-django-yauth, python-httplib2, python-memcached, python-django-replicated, sphinxapi
+Section: misc
+Priority: extra
+Homepage: https://github.yandex-team.ru/graphite/graphite-web/tree/clickhouse
+Description: graph system uses clickhouse
+ New graph system uses clickhouse
