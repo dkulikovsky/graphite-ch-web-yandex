@@ -3273,6 +3273,8 @@ SeriesFunctions = {
   'diffSeries' : diffSeries,
   'divideSeries' : divideSeries,
   'yabsStatLag' : yabsStatLag,
+  'mapSeries' : mapSeries,
+  'reduceSeries' : reduceSeries,
 
   # Series Filter functions
   'mostDeviant' : mostDeviant,
