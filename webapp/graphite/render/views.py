@@ -115,6 +115,7 @@ def renderView(request):
     if cachedResponse:
       log.cache('Request-Cache hit [%s]' % requestHash)
       log.rendering('[%s] Returned cached response in %.6f' % (requestHash, (time() - start)))
+      log.info("RENDER:[%s]:Timings:Cached %.5f" % (requestHash, time() - start))
       return cachedResponse
     else:
       log.cache('Request-Cache miss [%s]' % requestHash)
@@ -199,7 +200,7 @@ def renderView(request):
 
           data.extend(seriesList)
       log.rendering("[%s] Retrieval took %.6f" % (requestHash, (time() - start_t)))
-      log.info("DEBUG:render:[%s] retreival using gevent took %.6f" % (requestHash, (time() - start_t)))
+      log.info("RENDER:[%s]:Timigns:Retrive %.6f" % (requestHash, (time() - start_t)))
 
       if useCache:
         cache.add(dataKey, data, cacheTimeout)
@@ -281,12 +282,14 @@ def renderView(request):
       return response
 
 
+  start_render_time = time()
   # We've got the data, now to render it
   graphOptions['data'] = data
   if settings.REMOTE_RENDERING: # Rendering on other machines is faster in some situations
     image = delegateRendering(requestOptions['graphType'], graphOptions)
   else:
     image = doImageRender(requestOptions['graphClass'], graphOptions)
+  log.info("RENDER:[%s]:Timings:imageRender %.5f" % (requestHash, time() - start_render_time))
 
   useSVG = graphOptions.get('outputFormat') == 'svg'
   if useSVG and 'jsonp' in requestOptions:
@@ -300,6 +303,7 @@ def renderView(request):
     cache.set(requestKey, response, cacheTimeout)
 
   log.rendering('[%s] Total rendering time %.6f seconds' % (requestHash, (time() - start)))
+  log.info("RENDER:[%s]:Timings:Total %.5f" % (requestHash, time() - start))
   return response
 
 

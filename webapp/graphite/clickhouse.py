@@ -89,6 +89,8 @@ class ClickHouseReader(object):
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
         log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
 		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
+        log.info("RENDER:[%s]:Timings:get_data_sort %.5f" % (self.request_key, time.time() - start_t))
+        log.info("RENDER:[%s]:Timings:get_data_all %.5f" % (self.request_key, time.time() - start_t_g)) 
         return result
 
     def get_multi_data(self, start_time, end_time):
@@ -123,6 +125,8 @@ class ClickHouseReader(object):
 #        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
         #log.info("DEBUG: data = \n %s \n" % data)
         log.info("DEBUG:get_multi_data:[%s] fetch = %s, parse = %s, path = %s, num = %s" % (self.request_key, fetch_time, time.time() - start_t, self.path, num))
+        log.info("RENDER:[%s]:Timings:get_data_fetch %.5f" % (self.request_key, fetch_time))
+        log.info("RENDER:[%s]:Timings:get_data_parse %.5f" % (self.request_key, time.time() - start_t))
         return data, time_step
 
 
@@ -168,7 +172,9 @@ class ClickHouseReader(object):
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
             return []
+        log.info("RENDER:[%s]:Timings:get_data_fetch in %.3f" % (self.request_key, (time.time() - start_t_g)))
 
+        start_t = time.time()
         # fill values array to fit (end_time - start_time)/time_step
         data = {}
         for dp in dps.split("\n"):
@@ -182,11 +188,14 @@ class ClickHouseReader(object):
 
         # fill output with nans when there is no datapoints
         filled_data = self.get_filled_data(data, start_time, end_time, time_step)
+        log.info("RENDER:[%s]:Timings:get_data_parse in %.3f" % (self.request_key, (time.time() - start_t)))
 
         # sort data
+        start_t = time.time()
         sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
         time_info = start_time, end_time, time_step
-        log.info("RENDER:fetch:[%s] in %.3f" % (self.request_key, (time.time() - start_t_g)))
+        log.info("RENDER:[%s]:Timings:get_data_sort in %.3f" % (self.request_key, (time.time() - start_t)))
+        log.info("RENDER:[%s]:Timings:get_data_all in %.3f" % (self.request_key, (time.time() - start_t_g)))
         return time_info, sorted_data
 
     def get_coeff(self, stime, etime):
