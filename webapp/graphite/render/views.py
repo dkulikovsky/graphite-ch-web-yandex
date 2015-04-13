@@ -16,6 +16,7 @@ import math
 import pytz
 from datetime import datetime
 import sys
+import signal
 
 from time import time, mktime
 from random import shuffle
@@ -24,6 +25,7 @@ from urllib import urlencode
 from urlparse import urlsplit, urlunsplit
 from cgi import parse_qs
 from cStringIO import StringIO
+from multiprocessing import Process, Queue
 try:
   import cPickle as pickle
 except ImportError:
@@ -54,6 +56,11 @@ from django.conf import settings
 
 def renderView(request):
   start = time()
+
+  try:
+    global_timeout_duration = getattr(settings, 'RENDER_DURATION_TIMEOUT')
+  except:
+    global_timeout_duration = 60
 
   if request.REQUEST.has_key('json_request'):
     (graphOptions, requestOptions) = parseDataOptions(request.REQUEST['json_request'])
@@ -123,7 +130,23 @@ def renderView(request):
           raise ValueError("Invalid target '%s'" % target)
         data.append( (name,value) )
       else:
-        seriesList = evaluateTarget(requestContext, target)
+        q = Queue(maxsize=1)
+        p = Process(target = evaluateWithQueue, args = (q, requestContext, target))
+        p.start()
+    
+        seriesList = None
+        try:
+            seriesList = q.get(True, global_timeout_duration)
+            p.join()
+        except Exception, e:
+            log.info("DEBUG:[%s] got an exception on trying to get seriesList from queue, error: %s" % (requestHash,e))
+            p.terminate()
+            return errorPage("Failed to fetch data")
+
+        if seriesList == None:
+            log.info("DEBUG:[%s] request timed out" % requestHash)
+            p.terminate()
+            return errorPage("Request timed out")
 
         for series in seriesList:
           func = PieFunctions[requestOptions['pieMode']]
@@ -155,7 +178,25 @@ def renderView(request):
           if not target.strip():
             continue
           t = time()
-          seriesList = evaluateTarget(requestContext, target)
+          
+          q = Queue(maxsize=1)
+          p = Process(target = evaluateWithQueue, args = (q, requestContext, target))
+          p.start()
+      
+          seriesList = None
+          try:
+              seriesList = q.get(True, global_timeout_duration)
+              p.join()
+          except Exception, e:
+              log.info("DEBUG:[%s] got an exception on trying to get seriesList from queue, error: %s" % (requestHash, e))
+              p.terminate()
+              return errorPage("Failed to fetch data")
+  
+          if seriesList == None:
+              log.info("DEBUG:[%s] request timed out" % requestHash)
+              p.terminate()
+              return errorPage("Request timed out")
+
           data.extend(seriesList)
       log.rendering("[%s] Retrieval took %.6f" % (requestHash, (time() - start_t)))
       log.info("DEBUG:render:[%s] retreival using gevent took %.6f" % (requestHash, (time() - start_t)))
@@ -493,3 +534,9 @@ def errorPage(message):
   template = loader.get_template('500.html')
   context = Context(dict(message=message))
   return HttpResponseServerError( template.render(context) )
+
+def evaluateWithQueue(queue, requestContext, target):
+  result = evaluateTarget(requestContext, target)
+  queue.put_nowait(result)
+  return
+
