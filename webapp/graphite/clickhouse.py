@@ -89,7 +89,7 @@ class ClickHouseReader(object):
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
         log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
 		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
-        log.info("RENDER:[%s]:Timings:get_data_sort %.5f" % (self.request_key, time.time() - start_t))
+        log.info("RENDER:[%s]:Timings:get_data_fill %.5f" % (self.request_key, time.time() - start_t))
         log.info("RENDER:[%s]:Timings:get_data_all %.5f" % (self.request_key, time.time() - start_t_g)) 
         return result
 
@@ -102,8 +102,9 @@ class ClickHouseReader(object):
         url = "http://%s:8123" % self.storage
         data = {}
         dps = requests.post(url, query).text
-#        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
-#        start_t = time.time()
+        log.info("RENDER:[%s]:Timings:get_data_fetch %.5f" % (self.request_key, time.time() - start_t))
+        start_t = time.time()
+
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
 #        else:
@@ -120,12 +121,10 @@ class ClickHouseReader(object):
             dp_ts = arr[1].strip()
             dp_val = arr[2].strip()
             data.setdefault(path, {})[dp_ts] = float(dp_val)
-        fetch_time = time.time() - start_t
 #        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
 #        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
         #log.info("DEBUG: data = \n %s \n" % data)
         log.info("DEBUG:get_multi_data:[%s] fetch = %s, parse = %s, path = %s, num = %s" % (self.request_key, fetch_time, time.time() - start_t, self.path, num))
-        log.info("RENDER:[%s]:Timings:get_data_fetch %.5f" % (self.request_key, fetch_time))
         log.info("RENDER:[%s]:Timings:get_data_parse %.5f" % (self.request_key, time.time() - start_t))
         return data, time_step
 
