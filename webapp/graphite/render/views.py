@@ -200,7 +200,7 @@ def renderView(request):
 
           data.extend(seriesList)
       log.rendering("[%s] Retrieval took %.6f" % (requestHash, (time() - start_t)))
-      log.info("RENDER:[%s]:Timigns:Retrive %.6f" % (requestHash, (time() - start_t)))
+      log.info("RENDER:[%s]:Timigns:Retrieve %.6f" % (requestHash, (time() - start_t)))
 
       if useCache:
         cache.add(dataKey, data, cacheTimeout)

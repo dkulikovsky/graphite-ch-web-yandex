@@ -103,7 +103,7 @@ class ClickHouseReader(object):
         data = {}
         dps = requests.post(url, query).text
 #        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
-        start_t = time.time()
+#        start_t = time.time()
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
 #        else:
