@@ -84,16 +84,10 @@ class ClickHouseReader(object):
         start_t = time.time()
         time_info = start_time, end_time, time_step
         for path in data.keys():
-    	    ts = Series(data[path])
-            ts = ts.reindex(index=xrange(int(start_time/time_step)*time_step, int(end_time/time_step)*time_step, time_step))
-            sorted_data = ts.values
-    	    sorted_data = ts.where((notnull(sorted_data)), None)
-            result.append((tmp_node_obj(path), (time_info, sorted_data.tolist())))
- 
-            # fill output with nans when there is no datapoints
-#            filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
-#            sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
-#            result.append((tmp_node_obj(path), (time_info, sorted_data)))
+    	     # fill output with nans when there is no datapoints
+            filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
+            sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
+            result.append((tmp_node_obj(path), (time_info, sorted_data)))
         log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
 		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
         log.info("RENDER:[%s]:Timings:get_data_fill %.5f" % (self.request_key, time.time() - start_t))
@@ -197,24 +191,19 @@ class ClickHouseReader(object):
             dp_val = arr[1].strip()
             data[dp_ts] = float(dp_val)
 
+        # fill output with nans when there is no datapoints
+        filled_data = self.get_filled_data(data, start_time, end_time, time_step)
+        log.info("RENDER:[%s]:Timings:get_data_parse in %.3f" % (self.request_key, (time.time() - start_t)))
+
+        # sort data
         start_t = time.time()
-    	ts = Series(data)
-        ts = ts.reindex(index=xrange(int(start_time/time_step)*time_step, int(end_time/time_step)*time_step, time_step))
-        sorted_data = ts.values
-    	sorted_data = ts.where((notnull(sorted_data)), None)
- 
-#        # fill output with nans when there is no datapoints
-#        filled_data = self.get_filled_data(data, start_time, end_time, time_step)
-#        log.info("RENDER:[%s]:Timings:get_data_parse in %.3f" % (self.request_key, (time.time() - start_t)))
-#
-#        # sort data
-#        start_t = time.time()
-#        sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
+        sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
 
         time_info = start_time, end_time, time_step
         log.info("RENDER:[%s]:Timings:get_data_sort in %.3f" % (self.request_key, (time.time() - start_t)))
         log.info("RENDER:[%s]:Timings:get_data_all in %.3f" % (self.request_key, (time.time() - start_t_g)))
-        return time_info, sorted_data.tolist()
+#        return time_info, sorted_data.tolist()
+        return time_info, sorted_data
 
     def get_time_step(self, stime, etime):
         # find metric type and set time_step
