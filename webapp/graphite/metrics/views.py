@@ -293,8 +293,8 @@ def tree_json(nodes, base_path, wildcards=False):
 
     found.add(node.name)
     resultNode = {
-      'text' : str(node.name),
-      'id' : base_path + str(node.name),
+      'text' : node.name.encode('utf-8'),
+      'id' : base_path + node.name.encode('utf-8'),
     }
 
     if node.is_leaf:

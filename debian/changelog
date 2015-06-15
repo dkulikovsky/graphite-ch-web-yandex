@@ -1,3 +1,9 @@
+graphite-ch (0.1.10.5) unstable; urgency=low
+
+  * fixed tree encode bug 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Mon, 15 Jun 2015 12:15:38 +0300
+
 graphite-ch (0.1.10.4) unstable; urgency=medium
 
   * add buttons 
