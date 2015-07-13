@@ -77,7 +77,7 @@ class ClickHouseReader(object):
         log.info("DEBUG:start_end_time:[%s]\t%s\t%s" % (self.request_key, start_time, end_time))
         # fix path, convert it to query appliable to db
         self.path = FindQuery(self.pathExpr, start_time, end_time).pattern
-        data, time_step = self.get_multi_data(start_time, end_time)
+        data, time_step, metrics = self.get_multi_data(start_time, end_time)
         # fullfill data fetched from storages to fit timestamps 
         result = []
         start_t = time.time()
@@ -87,12 +87,18 @@ class ClickHouseReader(object):
             filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
             sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
             result.append((tmp_node_obj(path), (time_info, sorted_data)))
+
+        # add metrics with no data to result
+        empty_metrics = set(metrics) - set(data.keys())
+        for m in empty_metrics:
+            result.append((tmp_node_obj(m), (time_info, [])))
+
         log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
 		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
         return result
 
     def get_multi_data(self, start_time, end_time):
-        query, time_step, num = self.gen_multi_query(start_time, end_time)
+        query, time_step, num, metrics = self.gen_multi_query(start_time, end_time)
         # query_hash now have only one storage beceause clickhouse has distributed table engine
         log.info("DEBUG:MULTI:[%s] got storage %s, query [ %s ] and time_step %d" % (self.request_key, self.storage, query, time_step))
         start_t = time.time()
@@ -100,13 +106,10 @@ class ClickHouseReader(object):
         url = "http://%s:8123" % self.storage
         data = {}
         dps = requests.post(url, query).text
-#        log.info("DEBUG:OPT: data fetch in %.3f" % (time.time() - start_t))
         start_t = time.time()
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
-#        else:
-#            log.info("DEBUG:MULTI: got data from %s" % self.storage)
-    
+   
         # fill values array to fit (end_time - start_time)/time_step
         for dp in dps.split("\n"):
             dp = dp.strip()
@@ -118,21 +121,19 @@ class ClickHouseReader(object):
             dp_ts = arr[1].strip()
             dp_val = arr[2].strip()
             data.setdefault(path, {})[dp_ts] = float(dp_val)
+
         fetch_time = time.time() - start_t
-#        log.info("DEBUG:OPT: parsed output in %.3f" % (time.time() - start_t))
-#        log.info("DEBUG:MULTI: got %d keys" % len(data.keys()))
-        #log.info("DEBUG: data = \n %s \n" % data)
         log.info("DEBUG:get_multi_data:[%s] fetch = %s, parse = %s, path = %s, num = %s" % (self.request_key, fetch_time, time.time() - start_t, self.path, num))
-        return data, time_step
+        return data, time_step, metrics
 
 
     def gen_multi_query(self, stime, etime):
         coeff, agg = self.get_coeff(stime, etime)
-        metrics_tmp = mstree_search(self.path)
+        metrics_tmp = [ m.strip() for m in mstree_search(self.path) ]
         metrics = []
         for m in metrics_tmp:
             if not m[-1] == ".":
-                metrics.append("'%s'" % m.strip())
+                metrics.append("'%s'" % m)
         
         query = ""
         num = len(metrics)
@@ -154,7 +155,7 @@ class ClickHouseReader(object):
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
                         ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, coeff, coeff) 
-        return query, coeff, num
+        return query, coeff, num, metrics_tmp
 
 
     def fetch(self, start_time, end_time):
