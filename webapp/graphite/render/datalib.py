@@ -113,7 +113,7 @@ def fetchData(requestContext, pathExpr):
             try:
                 cache.add(request_hash, fetches)
             except Exception as err:
-                log.exception("Failed save data in memcached:", str(err))
+                log.exception("Failed save data in memcached: %s" % str(err))
     elif len(matching_nodes) == 1:
         fetches = [(matching_nodes[0], matching_nodes[0].fetch(startTime, endTime))]
     else:
