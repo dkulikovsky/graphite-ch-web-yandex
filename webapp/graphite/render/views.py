@@ -196,14 +196,14 @@ def renderView(request):
             for r in range(1, valuesToLose):
               del series[0]
             series.consolidate(valuesPerPoint)
-            timestamps = range(int(series.start), int(series.end), int(secondsPerPoint))
+            timestamps = range(int(series.start), int(series.end)+1, int(secondsPerPoint))
           else:
-            timestamps = range(int(series.start), int(series.end), int(series.step))
+            timestamps = range(int(series.start), int(series.end)+1, int(series.step))
           datapoints = zip(series, timestamps)
           series_data.append(dict(target=series.name, datapoints=datapoints))
       else:
         for series in data:
-          timestamps = range(int(series.start), int(series.end), int(series.step))
+          timestamps = range(int(series.start), int(series.end)+1, int(series.step))
           datapoints = zip(series, timestamps)
           series_data.append(dict(target=series.name, datapoints=datapoints))
 
