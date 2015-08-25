@@ -53,7 +53,10 @@ def conductor_glob(pattern):
     return braces_glob(pattern)
   hosts = [host.replace('.','_') for host in hosts]
 
-  braces_expr = '{' + ','.join(hosts) + '}'
+  if len(hosts) == 1:
+    braces_expr = hosts[0]
+  else:
+    braces_expr = '{' + ','.join(hosts) + '}'
   parts[pos] = braces_expr
 
   return braces_glob('/'.join(parts))
