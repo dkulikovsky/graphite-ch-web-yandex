@@ -110,7 +110,10 @@ def fetchData(requestContext, pathExpr):
         else:
 	    log.info("DEBUG:fetchData: no cache for %s_%s_%s" % (pathExpr, startTime, endTime))
             fetches = ClickHouseReader(pathExpr, multi=1, reqkey=requestContext['request_key']).multi_fetch(startTime, endTime)
-            cache.add(request_hash, fetches)
+            try:
+                cache.add(request_hash, fetches)
+            except Exception as err:
+                log.exception("Failed save data in memcached: %s" % str(err))
     elif len(matching_nodes) == 1:
         fetches = [(matching_nodes[0], matching_nodes[0].fetch(startTime, endTime))]
     else:

@@ -41,10 +41,10 @@ rightBrace = Literal('}')
 leftParen = Literal('(').suppress()
 rightParen = Literal(')').suppress()
 comma = Literal(',').suppress()
-equal = Literal('=').suppress()
+#equal = Literal('=').suppress()
 backslash = Literal('\\').suppress()
 
-symbols = '''(){},=.'"\\'''
+symbols = '''(){},.'"\\'''
 arg = Group(
   boolean |
   number |

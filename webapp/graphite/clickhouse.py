@@ -91,7 +91,8 @@ class ClickHouseReader(object):
         # add metrics with no data to result
         empty_metrics = set(metrics) - set(data.keys())
         for m in empty_metrics:
-            result.append((tmp_node_obj(m), (time_info, [])))
+            empty_data = [ None for _ in range(start_time, end_time+1, time_step) ]
+            result.append((tmp_node_obj(m), (time_info, empty_data)))
 
         log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
 		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
