@@ -1,3 +1,17 @@
+graphite-ch (0.1.12.1) unstable; urgency=low
+
+  * one more fix for conductor groups with single host 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 28 Aug 2015 16:31:04 +0300
+
+graphite-ch (0.1.12) unstable; urgency=low
+
+  * merged patches:
+  *  - one-host groups fix  
+  *  - Fix empty metrics & fix crush saved cache 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Wed, 26 Aug 2015 15:02:22 +0300
+
 graphite-ch (0.1.11) unstable; urgency=low
 
   * fixed empty metrics fetch
