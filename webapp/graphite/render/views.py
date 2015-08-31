@@ -184,7 +184,7 @@ def renderView(request):
         timeRange = endTime - startTime
         maxDataPoints = requestOptions['maxDataPoints']
         for series in data:
-          if not any(series): break
+          if len(set(series)) == 1 and series[0] is None: break
           numberOfDataPoints = timeRange/series.step
           if maxDataPoints < numberOfDataPoints:
             valuesPerPoint = math.ceil(float(numberOfDataPoints) / float(maxDataPoints))
@@ -204,7 +204,7 @@ def renderView(request):
           series_data.append(dict(target=series.name, datapoints=datapoints))
       else:
         for series in data:
-          if not any(series): break
+          if len(set(series)) == 1 and series[0] is None: break
           timestamps = range(int(series.start), int(series.end)+1, int(series.step))
           datapoints = zip(series, timestamps)
           series_data.append(dict(target=series.name, datapoints=datapoints))
