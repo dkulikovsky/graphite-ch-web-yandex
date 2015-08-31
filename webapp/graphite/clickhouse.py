@@ -169,7 +169,6 @@ class ClickHouseReader(object):
         dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
-            return []
 
         # fill values array to fit (end_time - start_time)/time_step
         data = {}
@@ -252,7 +251,7 @@ class ClickHouseReader(object):
         ts_fail = 0
         start_t = time.time() # for debugging timeouts
         stime = stime - (stime % step)
-        data_ts_min = int(min(data.keys()))
+        data_ts_min = int(min(data.keys())) if data else stime
         data_stime = data_ts_min - (data_ts_min % step)
         filled_data = {}
 
