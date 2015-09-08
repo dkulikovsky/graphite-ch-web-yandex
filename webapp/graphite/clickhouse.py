@@ -129,7 +129,7 @@ class ClickHouseReader(object):
 
 
     def gen_multi_query(self, stime, etime):
-        coeff, agg = self.get_coeff(stime, etime)
+        time_step, agg = self.get_time_step(stime, etime)
         metrics_tmp = [ m.strip() for m in mstree_search(self.path) ]
         metrics = []
         for m in metrics_tmp:
@@ -140,23 +140,23 @@ class ClickHouseReader(object):
         num = len(metrics)
         path_expr = "Path IN ( %s )" % ", ".join(metrics)
         if agg == 0:
-            query = """SELECT Path, Time, Value FROM graphite_d WHERE %s\
+            query = """SELECT Path, intDiv(toUInt32(Time), %d) * %d, Value FROM graphite_d WHERE %s\
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
                         Date <= toDate(toDateTime(%d))
-                        ORDER BY Time, Timestamp""" % (path_expr, stime, etime, stime, etime) 
+                        ORDER BY Time, Timestamp""" % (time_step, time_step, path_expr, stime, etime, stime, etime) 
         else:
             sub_query = """SELECT Path, Time, Date, argMax(Value, Timestamp) as Value
                         FROM graphite_d WHERE %s
                         AND Time > %d AND Time < %d 
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
-            query = """SELECT anyLast(Path), min(Time),avg(Value) FROM (%s)
+            query = """SELECT anyLast(Path), kvantT, avg(Value) FROM (%s)
                         WHERE %s\
                         AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d 
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, coeff, coeff) 
-        return query, coeff, num, metrics_tmp
+                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, time_step, time_step) 
+        return query, time_step, num, metrics_tmp
 
 
     def fetch(self, start_time, end_time):
@@ -190,9 +190,9 @@ class ClickHouseReader(object):
         log.info("RENDER:fetch:[%s] in %.3f" % (self.request_key, (time.time() - start_t_g)))
         return time_info, sorted_data
 
-    def get_coeff(self, stime, etime):
-        # find metric type and set coeff
-        coeff = 60
+    def get_time_step(self, stime, etime):
+        # find metric type and set time_step
+        time_step = 60
         agg = 0
         for t in self.schema.keys():
             if re.match(r'^%s.*$' % self.schema[t]['patt'], self.path):
@@ -208,10 +208,10 @@ class ClickHouseReader(object):
                             # if start_time is in first retention interval
                             # than no aggregation needed
                             agg = 0
-                            coeff = int(seconds)
+                            time_step = int(seconds)
                         else:
                             agg = 1
-                            coeff = int(seconds)
+                            time_step = int(seconds)
                         break
                     loop_index += 1
                 if agg == 0 and (stime < (time.time() - delta)):
@@ -219,30 +219,30 @@ class ClickHouseReader(object):
                     # take last retention
                     seconds = self.schema[t]['ret'][-1]
                     agg = 1
-                    coeff = int(seconds)
+                    time_step = int(seconds)
                 break # break the outer loop, we have already found matching schema
 
-#        log.info("DEBUG: got coeff: %d, agg = %d" % (coeff, agg))
-        return coeff, agg
+#        log.info("DEBUG: got time_step: %d, agg = %d" % (time_step, agg))
+        return time_step, agg
 
     def gen_query(self, stime, etime):
-        coeff, agg = self.get_coeff(stime, etime)
+        time_step, agg = self.get_time_step(stime, etime)
         path_expr = "Path = '%s'" % self.path
         if agg == 0:
-            query = """SELECT Time,Value FROM graphite_d WHERE %s\
+            query = """SELECT intDiv(toUInt32(Time), %d) * %d,Value FROM graphite_d WHERE %s\
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
                         Date <= toDate(toDateTime(%d))
-                        ORDER BY Time, Timestamp""" % (path_expr, stime, etime, stime, etime) 
+                        ORDER BY Time, Timestamp""" % (time_step, time_step, path_expr, stime, etime, stime, etime)
         else:
             sub_query = """SELECT Path,Time,Date,argMax(Value, Timestamp) as Value FROM graphite_d WHERE %s
                         AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
                         Date <= toDate(toDateTime(%d)) GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
-            query = """SELECT min(Time),avg(Value) FROM (%s) WHERE %s\
+            query = """SELECT kvantT, avg(Value) FROM (%s) WHERE %s\
                         AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
                         AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
                         GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, coeff, coeff) 
-        return query, coeff
+                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, time_step, time_step) 
+        return query, time_step
 
     def get_filled_data(self, data, stime, etime, step):
         # some stat about how datapoint manage to fit timestamp map 
@@ -266,7 +266,6 @@ class ClickHouseReader(object):
                 ts_fail += 1
                 continue
 
-            ts = unicode(ts)
             if data.has_key(ts):
                 filled_data[ts] = data[ts]
                 data_index += 1
