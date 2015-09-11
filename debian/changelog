@@ -1,3 +1,15 @@
+graphite-ch (0.1.13.2) unstable; urgency=low
+
+  * fixed No Data handling 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 11 Sep 2015 18:31:31 +0300
+
+graphite-ch (0.1.13.1) unstable; urgency=low
+
+  * added query optimization 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 11 Sep 2015 17:28:55 +0300
+
 graphite-ch (0.1.12.1) unstable; urgency=low
 
   * one more fix for conductor groups with single host 
