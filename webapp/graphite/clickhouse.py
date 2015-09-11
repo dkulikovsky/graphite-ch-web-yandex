@@ -92,7 +92,7 @@ class ClickHouseReader(object):
         empty_metrics = set(metrics) - set(data.keys())
         for m in empty_metrics:
             empty_data = [ None for _ in range(start_time, end_time+1, time_step) ]
-            result.append((tmp_node_obj(m), (time_info, empty_data)))
+            result.append((tmp_node_obj(m), ((start_time, start_time, time_step), empty_data)))
 
         log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
 		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
@@ -169,6 +169,10 @@ class ClickHouseReader(object):
         dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
             log.info("WARN: empty response from db, nothing to do here")
+            empty_data = [ None for _ in range(start_time, end_time+1, time_step) ]
+            # ugly hack for render to catch empty data sets, it calculates diff between start_time and end_time
+            # if start_time = end_time, render shows No Data for such metric
+            return (start_time, start_time, time_step), empty_data
 
         # fill values array to fit (end_time - start_time)/time_step
         data = {}
