@@ -164,7 +164,7 @@ class ClickHouseReader(object):
         log.info("DEBUG:start_end_time:[%s] \t%s\t%s" % (self.request_key, start_time, end_time))
         params_hash = {}
         params_hash['query'], time_step = self.gen_query(start_time, end_time)
-        log.info("DEBUG:SINGLE:[%s] got query %s and time_step %d" % (self.request_key, params_hash['query'], time_step))
+        log.info("DEBUG:SINGLE:[%s] got query %s and time_step %d" % (self.request_key, params_hash['query'].replace("\n", " "), time_step))
         url = "http://%s:8123" % self.storage
         dps = requests.get(url, params = params_hash).text
         if len(dps) == 0:
