@@ -1,3 +1,9 @@
+graphite-ch (0.1.14) unstable; urgency=low
+
+  * added timeout on render 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Thu, 17 Sep 2015 12:30:24 +0300
+
 graphite-ch (0.1.13.2) unstable; urgency=low
 
   * fixed No Data handling 
@@ -181,6 +187,12 @@ graphite-ch (0.1.5.6) unstable; urgency=low
   * merged with master again 
 
  -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 12 Dec 2014 16:12:47 +0300
+
+graphite-ch (0.1.5.6) unstable; urgency=low
+
+  * added mapSeries reduceSeries functions 
+
+ -- Anna Sysoeva <antrue@yandex-team.ru>  Fri, 10 Apr 2015 18:21:12 +0300
 
 graphite-ch (0.1.5.5) unstable; urgency=low
 
