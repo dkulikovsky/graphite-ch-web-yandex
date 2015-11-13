@@ -127,10 +127,7 @@ class ClickHouseReader(object):
 		ClickHouseReader.periods = periods
 
 	def get_intervals(self):
-		start = 0
-		end   = int(time.time())
-
-		return IntervalSet([Interval(start, end)])
+		return IntervalSet([Interval(0, int(time.time()))])
 
 	def fetch(self, startTime, endTime):
 		(step, aggregate) = self.get_step(startTime, endTime)
