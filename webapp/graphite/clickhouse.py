@@ -82,6 +82,12 @@ class ClickHouseFinder(object):
 			else:
 				yield LeafNode(metric, ClickHouseReader(metric, reqkey))
 
+class ClickHouseCache(object):
+	__slots__ = ('path')
+
+	def __init__(self, reader):
+		self.path = reader.path
+
 class ClickHouseReader(object):
 	__slots__ = ('path', 'nodes', 'reqkey', 'schema', 'periods')
 
@@ -181,7 +187,7 @@ class ClickHouseReader(object):
 			data.setdefault(node.path, {})
 
 			result.append((
-				node,
+				ClickHouseCache(node),
 				(
 					timeInfo,
 					[
@@ -239,7 +245,8 @@ class ClickHouseReader(object):
 		return (step, aggregate)
 
 	def get_query(self, startTime, endTime, step, aggregate, withPath):
-		paths = ["'%s'" % node.path for node in self.nodes]
+		paths = [node.path.replace('\'', '\\\'') for node in self.nodes]
+		paths = ["'%s'" % path for path in paths]
 
 		if len(paths) > 1:
 			pathExpr = 'Path IN ( %s )' % ', '.join(paths)
