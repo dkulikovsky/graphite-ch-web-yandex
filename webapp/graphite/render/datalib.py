@@ -14,12 +14,11 @@ limitations under the License."""
 
 import sys
 import time
-import threading
+import graphite.clickhouse
 from graphite.logger import log
 from graphite.storage import STORE
-from graphite.readers import FetchInProgress
+from graphite.readers import MultiReader, FetchInProgress
 from django.conf import settings
-from graphite.clickhouse import ClickHouseReader
 from django.core.cache import cache
 from hashlib import md5
 
@@ -109,7 +108,7 @@ def fetchData(requestContext, pathExpr):
             fetches = cached_result
         else:
 	    log.info("DEBUG:fetchData: no cache for %s_%s_%s" % (pathExpr, startTime, endTime))
-            fetches = ClickHouseReader(pathExpr, multi=1, reqkey=requestContext['request_key']).multi_fetch(startTime, endTime)
+            fetches = MultiReader(matching_nodes, requestContext['request_key']).fetch(startTime, endTime)
             try:
                 cache.add(request_hash, fetches)
             except Exception as err:
@@ -155,12 +154,13 @@ def fetchData(requestContext, pathExpr):
   retries = 1 # start counting at one to make log output and settings more readable
   while True:
     try:
-      seriesList = _fetchData(pathExpr,startTime, endTime, requestContext, seriesList)
+      seriesList = _fetchData(pathExpr, startTime, endTime, requestContext, seriesList)
       return seriesList
     except Exception, e:
       if retries >= settings.MAX_FETCH_RETRIES:
+        import traceback
         log.exception("Failed after %i retry! See: %s" % (settings.MAX_FETCH_RETRIES, e))
-        raise Exception("Failed after %i retry! See: %s" % (settings.MAX_FETCH_RETRIES, e))
+        raise Exception("Failed after %i retry! See: %s" % (settings.MAX_FETCH_RETRIES, traceback.format_exc()))
       else:
         log.exception("Got an exception when fetching data! See: %s Will do it again! Run: %i of %i" %
                      (e, retries, settings.MAX_FETCH_RETRIES))
