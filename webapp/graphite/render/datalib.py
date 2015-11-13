@@ -14,6 +14,7 @@ limitations under the License."""
 
 import sys
 import time
+# graphite.clickhouse overwrites MultiReader, so must be imported before MultiReader
 import graphite.clickhouse
 from graphite.logger import log
 from graphite.storage import STORE
