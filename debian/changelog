@@ -1,3 +1,9 @@
+graphite-ch (0.1.14.1) unstable; urgency=low
+
+  * now if graphite can't fetch any datapoints, it will return Nan's
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 13 Nov 2015 20:02:44 +0300
+
 graphite-ch (0.1.13.3) unstable; urgency=low
 
   * backport for patch "Remove superfluous grid line for log scale"
