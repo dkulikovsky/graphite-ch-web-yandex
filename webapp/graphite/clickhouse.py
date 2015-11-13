@@ -82,14 +82,8 @@ class ClickHouseFinder(object):
 			else:
 				yield LeafNode(metric, ClickHouseReader(metric, reqkey))
 
-class ClickHouseCache(object):
-	__slots__ = ('path')
-
-	def __init__(self, reader):
-		self.path = reader.path
-
 class ClickHouseReader(object):
-	__slots__ = ('path', 'nodes', 'reqkey', 'schema', 'periods')
+	__slots__ = ('path', 'nodes', 'reqkey')
 
 	def __init__(self, path, reqkey = ''):
 		self.nodes = [self]
@@ -187,7 +181,7 @@ class ClickHouseReader(object):
 			data.setdefault(node.path, {})
 
 			result.append((
-				ClickHouseCache(node),
+				node,
 				(
 					timeInfo,
 					[
