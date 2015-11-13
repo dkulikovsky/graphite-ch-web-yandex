@@ -108,7 +108,7 @@ def fetchData(requestContext, pathExpr):
             fetches = cached_result
         else:
 	    log.info("DEBUG:fetchData: no cache for %s_%s_%s" % (pathExpr, startTime, endTime))
-            fetches = MultiReader(matching_nodes, requestContext['request_key']).fetch(startTime, endTime)
+            fetches = MultiReader(matching_nodes, reqkey=requestContext['request_key']).fetch(startTime, endTime)
             try:
                 cache.add(request_hash, fetches)
             except Exception as err:
@@ -158,9 +158,8 @@ def fetchData(requestContext, pathExpr):
       return seriesList
     except Exception, e:
       if retries >= settings.MAX_FETCH_RETRIES:
-        import traceback
         log.exception("Failed after %i retry! See: %s" % (settings.MAX_FETCH_RETRIES, e))
-        raise Exception("Failed after %i retry! See: %s" % (settings.MAX_FETCH_RETRIES, traceback.format_exc()))
+        raise Exception("Failed after %i retry! See: %s" % (settings.MAX_FETCH_RETRIES, e))
       else:
         log.exception("Got an exception when fetching data! See: %s Will do it again! Run: %i of %i" %
                      (e, retries, settings.MAX_FETCH_RETRIES))
