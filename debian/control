@@ -21,6 +21,7 @@ Depends: python-cairo,
  python-httplib2, 
  python-memcached,
  python-pylibmc,
- python-django-replicated
+ python-django-replicated,
+ python-requests
 Description: graph system uses clickhouse
  New graph system uses clickhouse
