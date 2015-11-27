@@ -1,383 +1,280 @@
-import requests
-import itertools
-import time
-import string
 import re
 import ConfigParser
-from pprint import pprint
-from graphite.logger import log
-from collections import OrderedDict
-from django.conf import settings
-from graphite.storage import FindQuery
+
+import time
+import urllib
+import requests
+import itertools
+
 from graphite.conductor import Conductor
+from django.conf import settings
+from graphite.logger import log
 
 try:
-    from graphite_api.intervals import Interval, IntervalSet
-    from graphite_api.node import LeafNode, BranchNode
+	from graphite_api.intervals import Interval, IntervalSet
+	from graphite_api.node import LeafNode, BranchNode
 except ImportError:
-    from graphite.intervals import Interval, IntervalSet
-    from graphite.node import LeafNode, BranchNode
+	from graphite.intervals import Interval, IntervalSet
+	from graphite.node import LeafNode, BranchNode
 
-class tmp_node_obj():
-    def __init__(self, path):
-        self.path = path
-
-class ClickHouseReader(object):
-    __slots__ = ('path','schema', 'periods', 'multi', 'pathExpr', 'storage', 'request_key')
-
-    def __init__(self, path, storage="", multi=0, reqkey=""):
-        self.storage = storage
-        if multi:
-            self.multi = 1
-            self.pathExpr =  path
-        else:
-            self.multi = 0
-            self.path = path
-        self.schema = {}
-        self.periods = []
-        self.load_storage_schema()
-	self.request_key = reqkey
-        try:
-            self.storage = "".join(getattr(settings, 'CLICKHOUSE_SERVER'))
-        except:
-            self.storage = "127.0.0.1"
-
-    def load_storage_schema(self):
-        conf = "/etc/cacher/storage_schema.ini"
-        config = ConfigParser.ConfigParser()
-        try:
-            config.read(conf)
-        except Exception, e:
-            log.info("Failed to read conf file %s, reason %s" % (conf, e))
-            return
-        if not config.sections():
-            log.info("absent or corrupted config file %s" % conf)
-            return 
-        
-        schema = {}
-        periods = []
-        for section in config.sections():
-            if section == 'main':
-                periods = [ int(x) for x in config.get("main", "periods").split(",") ]
-                continue
-            if not schema.has_key(section):
-                schema[section] = {}
-                schema[section]['ret'] = []
-                schema[section]['patt'] = config.get(section, 'pattern')
-            v = config.get(section, "retentions")
-            for item in v.split(","):
-                schema[section]['ret'].append(int(item))
-        self.schema = schema
-        self.periods = periods
-#        log.info("DEBUG: got schema [ %s ], got periods [ %s ]" % (pprint(schema), pprint(periods)))
-        return 
-
-    def multi_fetch(self, start_time, end_time):
-        start_t_g = time.time()
-        log.info("DEBUG:start_end_time:[%s]\t%s\t%s" % (self.request_key, start_time, end_time))
-        # fix path, convert it to query appliable to db
-        self.path = FindQuery(self.pathExpr, start_time, end_time).pattern
-        data, time_step, metrics = self.get_multi_data(start_time, end_time)
-        # fullfill data fetched from storages to fit timestamps 
-        result = []
-        start_t = time.time()
-        time_info = start_time, end_time, time_step
-        for path in data.keys():
-            # fill output with nans when there is no datapoints
-            filled_data = self.get_filled_data(data[path], start_time, end_time, time_step)
-            sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
-            result.append((tmp_node_obj(path), (time_info, sorted_data)))
-
-        # add metrics with no data to result
-        empty_metrics = set(metrics) - set(data.keys())
-        for m in empty_metrics:
-            empty_data = [ None for _ in range(start_time, end_time+1, time_step) ]
-            result.append((tmp_node_obj(m), ((start_time, start_time, time_step), empty_data)))
-
-        log.info("DEBUG:multi_fetch:[%s] all in in %.3f = [ fetch:%s, sort:%s ] path = %s" %\
-		 (self.request_key, (time.time() - start_t_g), start_t - start_t_g, (time.time() - start_t), self.pathExpr))
-        return result
-
-    def get_multi_data(self, start_time, end_time):
-        query, time_step, num, metrics = self.gen_multi_query(start_time, end_time)
-        # query_hash now have only one storage beceause clickhouse has distributed table engine
-        log.info("DEBUG:MULTI:[%s] got storage %s, query [ %s ] and time_step %d" % (self.request_key, self.storage, query, time_step))
-        start_t = time.time()
-
-        url = "http://%s:8123" % self.storage
-        data = {}
-        dps = requests.post(url, query).text
-        start_t = time.time()
-        if len(dps) == 0:
-            log.info("WARN: empty response from db, nothing to do here")
-   
-        # fill values array to fit (end_time - start_time)/time_step
-        for dp in dps.split("\n"):
-            dp = dp.strip()
-            if len(dp) == 0:
-                continue
-            arr = dp.split("\t")
-            # and now we have 3 field insted of two, first field is path
-            path = arr[0].strip()
-            dp_ts = arr[1].strip()
-            dp_val = arr[2].strip()
-            data.setdefault(path, {})[dp_ts] = float(dp_val)
-
-        fetch_time = time.time() - start_t
-        log.info("DEBUG:get_multi_data:[%s] fetch = %s, parse = %s, path = %s, num = %s" % (self.request_key, fetch_time, time.time() - start_t, self.path, num))
-        return data, time_step, metrics
-
-
-    def gen_multi_query(self, stime, etime):
-        time_step, agg = self.get_time_step(stime, etime)
-        metrics_tmp = [ m.strip() for m in mstree_search(self.path) ]
-        metrics = []
-        for m in metrics_tmp:
-            if not m[-1] == ".":
-                metrics.append("'%s'" % m)
-        
-        query = ""
-        num = len(metrics)
-        path_expr = "Path IN ( %s )" % ", ".join(metrics)
-        if agg == 0:
-            query = """SELECT Path, intDiv(toUInt32(Time), %d) * %d, Value FROM graphite_d WHERE %s\
-                        AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
-                        Date <= toDate(toDateTime(%d))
-                        ORDER BY Time, Timestamp""" % (time_step, time_step, path_expr, stime, etime, stime, etime) 
-        else:
-            sub_query = """SELECT Path, Time, Date, argMax(Value, Timestamp) as Value
-                        FROM graphite_d WHERE %s
-                        AND Time > %d AND Time < %d 
-                        AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
-                        GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
-            query = """SELECT anyLast(Path), kvantT, avg(Value) FROM (%s)
-                        WHERE %s\
-                        AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d 
-                        AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
-                        GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, time_step, time_step) 
-        return query, time_step, num, metrics_tmp
-
-
-    def fetch(self, start_time, end_time):
-        start_t_g = time.time()
-        log.info("DEBUG:start_end_time:[%s] \t%s\t%s" % (self.request_key, start_time, end_time))
-        params_hash = {}
-        params_hash['query'], time_step = self.gen_query(start_time, end_time)
-        log.info("DEBUG:SINGLE:[%s] got query %s and time_step %d" % (self.request_key, params_hash['query'].replace("\n", " "), time_step))
-        url = "http://%s:8123" % self.storage
-        dps = requests.get(url, params = params_hash).text
-        if len(dps) == 0:
-            log.info("WARN: empty response from db, nothing to do here")
-            empty_data = [ None for _ in range(start_time, end_time+1, time_step) ]
-            # ugly hack for render to catch empty data sets, it calculates diff between start_time and end_time
-            # if start_time = end_time, render shows No Data for such metric
-            return (start_time, start_time, time_step), empty_data
-
-        # fill values array to fit (end_time - start_time)/time_step
-        data = {}
-        for dp in dps.split("\n"):
-            dp = dp.strip()
-            if len(dp) == 0:
-                continue
-            arr = dp.split("\t")
-            dp_ts = arr[0].strip()
-            dp_val = arr[1].strip()
-            data[dp_ts] = float(dp_val)
-
-        # fill output with nans when there is no datapoints
-        filled_data = self.get_filled_data(data, start_time, end_time, time_step)
-
-        # sort data
-        sorted_data = [ filled_data[i] for i in sorted(filled_data.keys()) ]
-        time_info = start_time, end_time, time_step
-        log.info("RENDER:fetch:[%s] in %.3f" % (self.request_key, (time.time() - start_t_g)))
-        return time_info, sorted_data
-
-    def get_time_step(self, stime, etime):
-        # find metric type and set time_step
-        time_step = 60
-        agg = 0
-        for t in self.schema.keys():
-            if re.match(r'^%s.*$' % self.schema[t]['patt'], self.path):
-                # calc retention interval for stime
-                delta = 0
-                loop_index = 0
-                for seconds in self.schema[t]['ret']:
-                    # ugly month average 365/12 ~= 30.5
-                    # TODO: fix to real delta
-                    delta += int(self.periods[loop_index]) * 30.5 * 86400
-                    if stime > (time.time() - delta):
-                        if loop_index == 0:
-                            # if start_time is in first retention interval
-                            # than no aggregation needed
-                            agg = 0
-                            time_step = int(seconds)
-                        else:
-                            agg = 1
-                            time_step = int(seconds)
-                        break
-                    loop_index += 1
-                if agg == 0 and (stime < (time.time() - delta)):
-                    # start_time for requested period is even earlier than defined periods
-                    # take last retention
-                    seconds = self.schema[t]['ret'][-1]
-                    agg = 1
-                    time_step = int(seconds)
-                break # break the outer loop, we have already found matching schema
-
-#        log.info("DEBUG: got time_step: %d, agg = %d" % (time_step, agg))
-        return time_step, agg
-
-    def gen_query(self, stime, etime):
-        time_step, agg = self.get_time_step(stime, etime)
-        path_expr = "Path = '%s'" % self.path
-        if agg == 0:
-            query = """SELECT intDiv(toUInt32(Time), %d) * %d,Value FROM graphite_d WHERE %s\
-                        AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
-                        Date <= toDate(toDateTime(%d))
-                        ORDER BY Time, Timestamp""" % (time_step, time_step, path_expr, stime, etime, stime, etime)
-        else:
-            sub_query = """SELECT Path,Time,Date,argMax(Value, Timestamp) as Value FROM graphite_d WHERE %s
-                        AND Time > %d AND Time < %d AND Date >= toDate(toDateTime(%d)) AND 
-                        Date <= toDate(toDateTime(%d)) GROUP BY Path, Time, Date""" % (path_expr, stime, etime, stime, etime) 
-            query = """SELECT kvantT, avg(Value) FROM (%s) WHERE %s\
-                        AND toInt32(kvantT) > %d AND toInt32(kvantT) < %d
-                        AND Date >= toDate(toDateTime(%d)) AND Date <= toDate(toDateTime(%d))
-                        GROUP BY Path, toDateTime(intDiv(toUInt32(Time),%d)*%d) as kvantT
-                        ORDER BY kvantT""" % (sub_query, path_expr, stime, etime, stime, etime, time_step, time_step) 
-        return query, time_step
-
-    def get_filled_data(self, data, stime, etime, step):
-        # some stat about how datapoint manage to fit timestamp map 
-        ts_hit = 0
-        ts_miss = 0
-        ts_fail = 0
-        start_t = time.time() # for debugging timeouts
-        stime = stime - (stime % step)
-        data_ts_min = int(min(data.keys())) if data else stime
-        data_stime = data_ts_min - (data_ts_min % step)
-        filled_data = {}
-
-        data_keys = sorted(data.keys())
-        data_index = 0
-        p_start_t_g = time.time()
-        search_time = 0
-        for ts in xrange(stime, etime, step):
-            if ts < data_stime:
-                # we have no data for this timestamp, nothing to do here
-                filled_data[ts] = None
-                ts_fail += 1
-                continue
-
-            if data.has_key(ts):
-                filled_data[ts] = data[ts]
-                data_index += 1
-                ts_hit += 1
-                continue
-            else:
-                p_start_t = time.time()
-                for i in xrange(data_index, len(data_keys)):
-                    ts_tmp = int(data_keys[i])
-                    if ts_tmp >= int(ts) and (ts_tmp - int(ts)) < step:
-                        filled_data[ts] = data[data_keys[data_index]]
-                        data_index += 1
-                        ts_miss += 1
-                        break
-                    elif ts_tmp < int(ts):
-                        data_index += 1
-                        continue
-                    elif ts_tmp > int(ts):
-                        ts_fail += 1
-                        filled_data[ts] = None
-                        break
-                search_time += time.time() - p_start_t
-            # loop didn't break on continue statements, set it default NaN value
-            if not filled_data.has_key(ts):
-#                ts_fail += 1
-                filled_data[ts] = None
-#        log.info("DEBUG:OPT: loop in %.3f, search in %.3f" % ((time.time() - start_t), search_time))
-
-#        log.info("DEBUG:OPT: filled data in %.3f" % (time.time() - start_t))
-#        log.info("DEBUG: hit %d, miss %d, fail %d" % (ts_hit, ts_miss, ts_fail))
-        return filled_data
-
-    def get_intervals(self):
-        # TODO use cyanite info
-        start = 0
-        end = max(start, time.time())
-        return IntervalSet([Interval(start, end)])
-
-
-re_braces = re.compile(r'({[^{},]*,[^{}]*})')
-re_conductor = re.compile(r'(^%[\w@-]+)$')
 conductor = Conductor()
+def conductor_glob(queries):
+	result = set()
+	for query in queries:
+		parts = query.split('.')
+		for (index, part) in enumerate(parts):
+			if conductor.CONDUCTOR_EXPR_RE.match(part):
+				hosts = conductor.expandExpression(part)
+				hosts = [host.replace('.', '_') for host in hosts]
 
-def braces_glob(s):
-  match = re_braces.search(s)
-
-  if not match:
-    return [s]
-
-  res = set()
-  sub = match.group(1)
-  open_pos, close_pos = match.span(1)
-
-  for bit in sub.strip('{}').split(','):
-    res.update(braces_glob(s[:open_pos] + bit + s[close_pos:]))
-
-  return list(res)
-
-def conductor_glob(pattern):
-  parts = pattern.split('.')
-  pos = 0
-  found = False
-  for part in parts:
-    if re_conductor.match(part):
-      found = True
-      break
-    pos += 1
-  if not found:
-    return braces_glob(pattern)
-  cexpr = parts[pos]
-  hosts = conductor.expandExpression(cexpr)
-
-  if not hosts:
-    return braces_glob(pattern)
-  hosts = [host.replace('.','_') for host in hosts]
-
-  if len(hosts) == 1:
-    braces_expr = hosts[0]
-  else:
-    braces_expr = '{' + ','.join(hosts) + '}'
-  parts[pos] = braces_expr
-
-  return braces_glob('.'.join(parts))
+				if len(hosts) > 0:
+					parts[index] = hosts
+				else:
+					parts[index] = [part]
+			else:
+				parts[index] = [part]
+		result.update(['.'.join(p) for p in itertools.product(*parts)])
+	return list(result)
 
 class ClickHouseFinder(object):
-    def find_nodes(self, query, request_key):
-        q = query.pattern
-        metrics = mstree_search(q)
-        for v in metrics:
-            if v[-1] == ".":
-                yield BranchNode(v[:-1])
-            else:
-                yield LeafNode(v,ClickHouseReader(v, reqkey=request_key))
+	braces_re = re.compile('({[^{},]*,[^{}]*})')
 
+	def _expand_braces_part(self, part):
+		match = self.braces_re.search(part)
+		if not match:
+			return [part]
 
-def mstree_search(q):
-    out = []
-    for query in conductor_glob(q):
-            try:
-                backend = getattr(settings, 'METRICSEARCH')
-            except:
-                backend = "127.0.0.1"
-	    try:
-	        res = requests.get("http://%s:7000/search?query=%s" % ("".join(backend), query))
-	    except Exception, e:
-	        return []
-	    for item in res.text.split("\n"):
-	        if not item: continue
-	        out.append(item)
-#    log.info("DEBUG:mstree_search: got %d items from search" % len(out))
-    return out
+		result = set()
+
+		startPos, endPos = match.span(1)
+		for item in match.group(1).strip('{}').split(','):
+			result.update(self._expand_braces_part(part[:startPos] + item + part[endPos:]))
+
+		return list(result)
+
+	def expand_braces(self, query):
+		parts = query.split('.')
+		for (index, part) in enumerate(parts):
+			parts[index] = self._expand_braces_part(part)
+
+		result = set(['.'.join(p) for p in itertools.product(*parts)])
+		return list(result)
+
+	def find_nodes(self, query, reqkey):
+		metricsearch = getattr(settings, 'METRICSEARCH', '127.0.0.1')
+
+		queries = self.expand_braces(query.pattern)
+		queries = conductor_glob(queries)
+
+		result = []
+		for query in queries:
+			request = requests.get('http://%s:7000/search?%s' % (metricsearch, urllib.urlencode({'query': query})))
+			request.raise_for_status()
+
+			result += request.text.split('\n')
+
+		for metric in result:
+			if not metric:
+				continue
+
+			if metric.endswith('.'):
+				yield BranchNode(metric[:-1])
+			else:
+				yield LeafNode(metric, ClickHouseReader(metric, reqkey))
+
+class ClickHouseReader(object):
+	__slots__ = ('path', 'nodes', 'reqkey')
+
+	def __init__(self, path, reqkey = ''):
+		self.nodes = [self]
+		self.path  = None
+
+		if hasattr(path, '__iter__'):
+			self.nodes = path
+		else:
+			self.path  = path
+
+		self.reqkey = reqkey
+
+		if not hasattr(self, 'schema'):
+			self.load_storage_schema()
+
+	def load_storage_schema(self):
+		config = ConfigParser.ConfigParser()
+		try:
+			configFile = getattr(settings, 'GRAPHITE_SCHEMA', '/etc/cacher/storage_schema.ini')
+			config.read(configFile)
+		except Exception, e:
+			log.info('Failed to read storage_schema file %s: %s' % (configFile, e))
+			return
+
+		if not config.sections():
+			log.info('Corrupted storage_schema file %s' % configFile)
+			return
+
+		schema  = {}
+		periods = []
+		for section in config.sections():
+			if section == 'main':
+				periods = [ int(x.strip()) for x in config.get('main', 'periods').split(',') ]
+				continue
+
+			schema.setdefault(section, {})
+			schema[section]['pattern'] = re.compile(config.get(section, 'pattern'))
+			schema[section]['retentions'] = [ int(x.strip()) for x in config.get(section, 'retentions').split(',') ]
+
+		ClickHouseReader.schema  = schema
+		ClickHouseReader.periods = periods
+
+	def get_intervals(self):
+		return IntervalSet([Interval(0, int(time.time()))])
+
+	def fetch(self, startTime, endTime):
+		(step, aggregate) = self.get_step(startTime, endTime)
+
+		startTime -= startTime % step
+		endTime   -= endTime % step
+
+		log.info('DEBUG:clickhouse_range:[%s] start = %s, end = %s, step = %s' % (self.reqkey, startTime, endTime, step))
+
+		withPath = self.path is None
+
+		query = self.get_query(startTime, endTime, step, aggregate, withPath)
+		log.info('DEBUG:clickhouse_query:[%s] query = %s' % (self.reqkey, query))
+
+		profilingTime = {
+			'start': time.time()
+		}
+
+		request = requests.post("http://%s:8123" % ''.join(getattr(settings, 'CLICKHOUSE_SERVER', ['127.0.0.1'])), query)
+		request.raise_for_status()
+		profilingTime['fetch'] = time.time()
+		
+		if withPath:
+			offset = 1
+		else:
+			offset = 0
+			path   = self.path
+
+		data = {}
+		for line in request.text.split('\n'):
+			line = line.strip()
+			if not line:
+				continue
+
+			line = line.split('\t')
+
+			if withPath:
+				path = line[0].strip()
+			ts    = int(line[offset].strip())
+			value = float(line[offset + 1].strip())
+
+			data.setdefault(path, {})[ts] = value
+
+		profilingTime['parse'] = time.time()
+
+		timeInfo = (startTime, endTime, step)
+
+		result = []
+
+		for node in self.nodes:
+			data.setdefault(node.path, {})
+
+			result.append((
+				node,
+				(
+					timeInfo,
+					[
+						data[node.path].get(ts, None)
+							for ts in xrange(startTime, endTime + 1, step)
+					]
+				)
+			))
+
+		profilingTime['convert'] = time.time()
+
+		log.info('DEBUG:clickhouse_time:[%s] fetch = %s, parse = %s, convert = %s' % (
+			self.reqkey,
+			profilingTime['fetch'] - profilingTime['start'],
+			profilingTime['parse'] - profilingTime['fetch'],
+			profilingTime['convert'] - profilingTime['parse']
+		))
+
+		if self.path:
+			return result[0][1]
+
+		return result
+
+	def get_step(self, startTime, endTime):
+		step = 60
+		aggregate = 0
+
+		if not hasattr(self, 'schema'):
+			return (step, aggregate)
+
+		for node in self.nodes:
+			for schema in self.schema.itervalues():
+				if not schema['pattern'].match(node.path):
+					continue
+
+				delta = 0
+				for (index, retention) in enumerate(schema['retentions']):
+					# ugly month average 365/12 ~= 30.5
+					# TODO: fix to real delta
+					delta += int(self.periods[index]) * 30.5 * 86400
+					if startTime > (time.time() - delta):
+						step      = max(step, retention)
+						aggregate = max(aggregate, index)
+						break
+
+				if aggregate > 0:
+					aggregate = 1
+				elif startTime < (time.time() - delta):
+					retention = schema['retentions'][-1]
+					step      = max(step, retention)
+					aggregate = max(aggregate, 1)
+
+				break
+
+		return (step, aggregate)
+
+	def get_query(self, startTime, endTime, step, aggregate, withPath):
+		paths = [node.path.replace('\'', '\\\'') for node in self.nodes]
+		paths = ["'%s'" % path for path in paths]
+
+		if len(paths) > 1:
+			pathExpr = 'Path IN ( %s )' % ', '.join(paths)
+		else:
+			pathExpr = 'Path = %s' % paths[0]
+
+		args = {
+			'table': getattr(settings, 'GRAPHITE_TABLE', 'default.graphite_d'),
+			'paths': pathExpr,
+			'from':  startTime,
+			'until': endTime,
+			'step':  step,
+		}
+
+		if aggregate:
+			args['table'] = """(SELECT Path, Time, Date, argMax(Value, Timestamp) as Value FROM {table}
+					WHERE {paths}
+					AND Time >= {from} AND Time <= {until}
+					AND Date >= toDate(toDateTime({from})) AND Date <= toDate(toDateTime({until}))
+					GROUP BY Path, Time, Date)""".format(**args)
+
+		args['fields'] = ''
+		if withPath:
+			args['fields'] += 'anyLast(Path), '
+		if aggregate:
+			args['fields'] += 'kvantT, avg(Value)'
+		else:
+			args['fields'] += 'kvantT, argMax(Value, Timestamp)'
+
+		return """SELECT {fields} FROM {table}
+				WHERE {paths}
+				AND kvantT >= {from} AND kvantT <= {until}
+				AND Date >= toDate(toDateTime({from})) AND Date <= toDate(toDateTime({until}))
+				GROUP BY Path, intDiv(toUInt32(Time), {step}) * {step} as kvantT""".format(**args)
+
+import graphite.readers
+graphite.readers.MultiReader = ClickHouseReader

@@ -1,3 +1,15 @@
+graphite-ch (0.1.14.3) unstable; urgency=low
+
+  * merged timeout on render and master-stable patches 
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 27 Nov 2015 15:33:12 +0300
+
+graphite-ch (0.1.14.1) unstable; urgency=low
+
+  * now if graphite can't fetch any datapoints, it will return Nan's
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Fri, 13 Nov 2015 20:02:44 +0300
+
 graphite-ch (0.1.14) unstable; urgency=low
 
   * added timeout on render 
