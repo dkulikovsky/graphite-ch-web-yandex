@@ -5,6 +5,7 @@ import time
 import urllib
 import requests
 import itertools
+import traceback
 
 from graphite.conductor import Conductor
 from django.conf import settings
@@ -146,8 +147,13 @@ class ClickHouseReader(object):
 			'start': time.time()
 		}
 
-		request = requests.post("http://%s:8123" % ''.join(getattr(settings, 'CLICKHOUSE_SERVER', ['127.0.0.1'])), query)
-		request.raise_for_status()
+		try:
+			request = requests.post("http://%s:8123" % ''.join(getattr(settings, 'CLICKHOUSE_SERVER', ['127.0.0.1'])), query)
+			request.raise_for_status()
+		except Exception as e:
+			log.info("Failed to fetch data, got exception:\n %s" % traceback.format_exc())
+			return []
+
 		profilingTime['fetch'] = time.time()
 		
 		if withPath:
