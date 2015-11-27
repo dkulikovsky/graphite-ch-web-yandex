@@ -308,6 +308,10 @@ class Graph:
   def drawLegend(self, elements, unique=False): #elements is [ (name,color,rightSide), (name,color,rightSide), ... ]
     self.encodeHeader('legend')
 
+    # Check if there is no elements in legend
+    if not elements:
+        return
+
     # remove duplicate names
     namesSeen = []
     newElements = []
