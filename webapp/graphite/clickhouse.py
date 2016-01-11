@@ -212,6 +212,7 @@ class ClickHouseReader(object):
 		return result
 
 	def get_step(self, startTime, endTime):
+		step = None
 		aggregate = 0
 
 		if not hasattr(self, 'schema'):
