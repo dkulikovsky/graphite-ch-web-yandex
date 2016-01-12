@@ -212,7 +212,7 @@ class ClickHouseReader(object):
 		return result
 
 	def get_step(self, startTime, endTime):
-		step = None
+		step = 0
 		aggregate = 0
 
 		if not hasattr(self, 'schema'):
@@ -229,7 +229,7 @@ class ClickHouseReader(object):
 					# TODO: fix to real delta
 					delta += int(self.periods[index]) * 30.5 * 86400
 					if startTime > (time.time() - delta):
-						step      = retention
+						step      = max(step, retention)
 						aggregate = max(aggregate, index)
 						break
 
@@ -237,7 +237,7 @@ class ClickHouseReader(object):
 					aggregate = 1
 				elif startTime < (time.time() - delta):
 					retention = schema['retentions'][-1]
-					step      = retention
+					step      = max(step, retention)
 					aggregate = max(aggregate, 1)
 
 				break
