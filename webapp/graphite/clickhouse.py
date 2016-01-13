@@ -212,7 +212,7 @@ class ClickHouseReader(object):
 		return result
 
 	def get_step(self, startTime, endTime):
-		step = 60
+		step = 0
 		aggregate = 0
 
 		if not hasattr(self, 'schema'):
@@ -220,7 +220,7 @@ class ClickHouseReader(object):
 
 		for node in self.nodes:
 			for schema in self.schema.itervalues():
-				if not schema['pattern'].match(node.path):
+				if not schema['pattern'].search(node.path):
 					continue
 
 				delta = 0
@@ -241,6 +241,8 @@ class ClickHouseReader(object):
 					aggregate = max(aggregate, 1)
 
 				break
+		if not step:
+			step = 60
 
 		return (step, aggregate)
 
