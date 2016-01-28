@@ -1,3 +1,9 @@
+graphite-ch (0.1.14.7) unstable; urgency=medium
+
+  * yabs-ceres remover from deplist 
+
+ -- Anna Sysoeva <antrue@yandex-team.ru>  Thu, 28 Jan 2016 16:23:14 +0300
+
 graphite-ch (0.1.14.6) unstable; urgency=medium
 
   * fixed step bug in clickhouse module 
