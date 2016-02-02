@@ -1,3 +1,10 @@
+graphite-ch (0.1.14.8) unstable; urgency=medium
+
+  * fixed bug in standard find, for compat with other find changes 
+  * fixed get_intervals bug in remote_storage.py
+
+ -- Kulikovsky Dmitry <dkulikovsky@yandex-team.ru>  Tue, 02 Feb 2016 11:40:25 +0300
+
 graphite-ch (0.1.14.7) unstable; urgency=medium
 
   * yabs-ceres remover from deplist 
