@@ -145,7 +145,7 @@ class RemoteReader(object):
     return '<RemoteReader[%x]: %s>' % (id(self), self.store.host)
 
   def get_intervals(self):
-    return self.intervals
+    return IntervalSet([Interval(0, int(time.time()))])
 
   def fetch(self, startTime, endTime):
     query_params = [
