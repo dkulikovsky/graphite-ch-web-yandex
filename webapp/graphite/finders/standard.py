@@ -68,7 +68,7 @@ class CeresFinder:
     self.directory = directory
     self.tree = CeresTree(directory)
 
-  def find_nodes(self, query):
+  def find_nodes(self, query, reqkey):
     log.info("running ceres finder %s" % query)
     for fs_path in conductor_glob( self.tree.getFilesystemPath(query.pattern) ):
       metric_path = self.tree.getNodePath(fs_path)
@@ -92,7 +92,7 @@ class StandardFinder:
     directories = directories or settings.STANDARD_DIRS
     self.directories = directories
 
-  def find_nodes(self, query):
+  def find_nodes(self, query, reqkey):
     log.info("running blablabla RRd")
     clean_pattern = query.pattern.replace('\\', '')
     pattern_parts = clean_pattern.split('.')
